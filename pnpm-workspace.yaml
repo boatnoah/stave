@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Electron Forge packaging expects a flat dependency layout. pnpm 11 reads
+# non-registry settings from the workspace file instead of .npmrc.
+nodeLinker: hoisted
+
+# These are the only install scripts required by the current workspace.
+allowBuilds:
+  electron: true
+  esbuild: true

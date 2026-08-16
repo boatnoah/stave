@@ -1,0 +1,13 @@
+{
+  "name": "stave",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A local-first delivery board for teams of coding agents.",
+  "packageManager": "pnpm@11.1.2",
+  "scripts": {
+    "dev": "pnpm --filter @stave/desktop start",
+    "test": "pnpm --recursive test",
+    "typecheck": "pnpm --recursive typecheck",
+    "check": "pnpm typecheck && pnpm test"
+  }
+}
