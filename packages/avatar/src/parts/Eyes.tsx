@@ -4,20 +4,20 @@ import type {
   BrowStyle,
   EyeStyle,
 } from "../types";
+import type { AvatarGeometry } from "../geometry/create-avatar-geometry";
 
 interface EyesProps {
   readonly accessory: AccessoryStyle;
   readonly browAsymmetry: number;
   readonly browLift: number;
   readonly browStyle: BrowStyle;
-  readonly eyeSpacing: number;
   readonly eyeStyle: EyeStyle;
-  readonly eyeY: number;
   readonly featureScale: number;
   readonly gazeX: number;
   readonly gazeY: number;
   readonly personality: AvatarPersonality;
   readonly pupilSize: number;
+  readonly geometry: AvatarGeometry;
 }
 
 const eyeRadii: Record<EyeStyle, { readonly x: number; readonly y: number }> = {
@@ -100,27 +100,28 @@ export function Eyes({
   browAsymmetry,
   browLift,
   browStyle,
-  eyeSpacing,
   eyeStyle,
-  eyeY,
   featureScale,
   gazeX,
   gazeY,
   personality,
   pupilSize,
+  geometry,
 }: EyesProps) {
   const baseRadii = eyeRadii[eyeStyle];
   const radii = {
     x: baseRadii.x * featureScale,
     y: baseRadii.y * featureScale * personalityOpenness[personality],
   };
-  const leftX = 32 - eyeSpacing;
-  const rightX = 32 + eyeSpacing;
-  const browY = eyeY - 6.15 + browLift;
-  const leftBrowY = browY - browAsymmetry * 0.5;
-  const rightBrowY = browY + browAsymmetry * 0.5;
+  const leftX = geometry.face.leftEye.x;
+  const leftY = geometry.face.leftEye.y;
+  const rightX = geometry.face.rightEye.x;
+  const rightY = geometry.face.rightEye.y;
+  const leftBrowY = leftY - 6.15 + browLift - browAsymmetry * 0.5;
+  const rightBrowY = rightY - 6.15 + browLift + browAsymmetry * 0.5;
   const glassWidth = Math.max(8.8, radii.x * 2 + 3.5);
   const glassHeight = Math.max(8, radii.y * 2 + 3.1);
+  const bridgeY = (leftY + rightY) / 2;
 
   return (
     <g className="agent-avatar__eyes-and-brows" data-brow-style={browStyle}>
@@ -131,7 +132,7 @@ export function Eyes({
 
       <Eye
         centerX={leftX}
-        centerY={eyeY}
+        centerY={leftY}
         gazeX={gazeX}
         gazeY={gazeY}
         pupilSize={pupilSize}
@@ -140,7 +141,7 @@ export function Eyes({
       />
       <Eye
         centerX={rightX}
-        centerY={eyeY}
+        centerY={rightY}
         gazeX={gazeX}
         gazeY={gazeY}
         pupilSize={pupilSize}
@@ -150,9 +151,9 @@ export function Eyes({
 
       {accessory === "round-glasses" ? (
         <g className="agent-avatar__glasses agent-avatar__glasses--round">
-          <ellipse cx={leftX} cy={eyeY} rx={glassWidth / 2} ry={glassHeight / 2} />
-          <ellipse cx={rightX} cy={eyeY} rx={glassWidth / 2} ry={glassHeight / 2} />
-          <path d={`M${leftX + glassWidth / 2} ${eyeY} Q32 ${eyeY - 1} ${rightX - glassWidth / 2} ${eyeY}`} />
+          <ellipse cx={leftX} cy={leftY} rx={glassWidth / 2} ry={glassHeight / 2} />
+          <ellipse cx={rightX} cy={rightY} rx={glassWidth / 2} ry={glassHeight / 2} />
+          <path d={`M${leftX + glassWidth / 2} ${leftY} Q${(leftX + rightX) / 2} ${bridgeY - 1} ${rightX - glassWidth / 2} ${rightY}`} />
         </g>
       ) : null}
 
@@ -160,26 +161,26 @@ export function Eyes({
         <g className="agent-avatar__glasses agent-avatar__glasses--square">
           <rect
             x={leftX - glassWidth / 2}
-            y={eyeY - glassHeight / 2}
+            y={leftY - glassHeight / 2}
             width={glassWidth}
             height={glassHeight}
             rx="2.1"
           />
           <rect
             x={rightX - glassWidth / 2}
-            y={eyeY - glassHeight / 2}
+            y={rightY - glassHeight / 2}
             width={glassWidth}
             height={glassHeight}
             rx="2.1"
           />
-          <path d={`M${leftX + glassWidth / 2} ${eyeY} Q32 ${eyeY - 1} ${rightX - glassWidth / 2} ${eyeY}`} />
+          <path d={`M${leftX + glassWidth / 2} ${leftY} Q${(leftX + rightX) / 2} ${bridgeY - 1} ${rightX - glassWidth / 2} ${rightY}`} />
         </g>
       ) : null}
 
       {accessory === "monocle" ? (
         <g className="agent-avatar__glasses agent-avatar__monocle">
-          <ellipse cx={rightX} cy={eyeY} rx={glassWidth / 2} ry={glassHeight / 2} />
-          <path d={`M${rightX + glassWidth / 2 - 0.6} ${eyeY + 3} Q${rightX + 7} 39 ${rightX + 6} 45`} />
+          <ellipse cx={rightX} cy={rightY} rx={glassWidth / 2} ry={glassHeight / 2} />
+          <path d={`M${rightX + glassWidth / 2 - 0.6} ${rightY + 3} Q${rightX + 7} 39 ${rightX + 6} 45`} />
         </g>
       ) : null}
     </g>

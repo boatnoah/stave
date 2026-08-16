@@ -2,12 +2,14 @@ import { memo, useMemo, type CSSProperties } from "react";
 
 import { createAvatarIdentity } from "./engine/create-avatar-identity";
 import { getAvatarPalette } from "./engine/palettes";
+import { createAvatarGeometry } from "./geometry/create-avatar-geometry";
 import { getStatusExpression } from "./motion/status-expression";
 import { useAvatarReaction } from "./motion/use-avatar-reaction";
 import { Eyes } from "./parts/Eyes";
 import { FaceDetails } from "./parts/FaceDetails";
 import { HairBack, HairFront } from "./parts/Hair";
 import { Head } from "./parts/Head";
+import { StatusEffects } from "./parts/StatusEffects";
 import type { AgentAvatarProps, AvatarStatus } from "./types";
 
 import "./avatar.css";
@@ -25,6 +27,7 @@ const statusLabels: Record<AvatarStatus, string> = {
 
 type AvatarStyle = CSSProperties & {
   "--avatar-accent": string;
+  "--avatar-acting-delay": string;
   "--avatar-blink-duration": string;
   "--avatar-eye": string;
   "--avatar-face": string;
@@ -43,7 +46,7 @@ export const AgentAvatar = memo(function AgentAvatar({
   agentId,
   name,
   avatarSeed,
-  appearanceVersion = 2,
+  appearanceVersion = 3,
   status,
   size = 48,
   motion = "auto",
@@ -54,14 +57,16 @@ export const AgentAvatar = memo(function AgentAvatar({
     () => createAvatarIdentity(avatarSeed, appearanceVersion),
     [appearanceVersion, avatarSeed],
   );
+  const geometry = useMemo(() => createAvatarGeometry(identity), [identity]);
   const palette = getAvatarPalette(identity.palette);
   const expression = getStatusExpression(status, identity.personality);
   const reaction = useAvatarReaction(status);
-  const detail = size < 32 ? "compact" : "full";
+  const detail = size < 32 ? "compact" : size < 80 ? "standard" : "hero";
   const style: AvatarStyle = {
     width: size,
     height: size,
     "--avatar-accent": palette.accent,
+    "--avatar-acting-delay": `${350 + (identity.seedHash % 1_700)}ms`,
     "--avatar-blink-duration": `${identity.blinkDurationMs}ms`,
     "--avatar-eye": palette.eye,
     "--avatar-face": palette.face,
@@ -81,7 +86,9 @@ export const AgentAvatar = memo(function AgentAvatar({
     <span
       className={classes}
       data-agent-id={agentId}
+      data-acting-style={identity.actingStyle}
       data-detail={detail}
+      data-dominant-side={identity.dominantSide}
       data-motion={motion}
       data-palette={identity.palette}
       data-personality={identity.personality}
@@ -100,34 +107,42 @@ export const AgentAvatar = memo(function AgentAvatar({
         <path className="agent-avatar__paper-echo" d="M9 19 C17 4 45 0 55 17" />
         <g className="agent-avatar__presence">
           <g className="agent-avatar__offset" transform={`translate(${identity.faceOffsetX} 0)`}>
-            <g className="agent-avatar__character">
-              <HairBack style={identity.hairStyle} />
-              <Head shape={identity.headShape} />
-              <HairFront style={identity.hairStyle} />
-              <Eyes
-                accessory={identity.accessory}
-                browAsymmetry={expression.browAsymmetry}
-                browLift={expression.browLift}
-                browStyle={identity.browStyle}
-                eyeSpacing={identity.eyeSpacing}
-                eyeStyle={identity.eyeStyle}
-                eyeY={identity.eyeY}
-                featureScale={identity.featureScale}
-                gazeX={expression.gazeX}
-                gazeY={expression.gazeY}
-                personality={identity.personality}
-                pupilSize={identity.pupilSize}
-              />
-              <FaceDetails
-                eyeY={identity.eyeY}
-                faceMark={identity.faceMark}
-                featureScale={identity.featureScale}
-                mouth={expression.mouth}
-                mouthStyle={identity.mouthStyle}
-                mouthY={identity.mouthY}
-                noseStyle={identity.noseStyle}
-              />
+            <g className="agent-avatar__status-pose">
+              <g className="agent-avatar__reaction-pose">
+                <g className="agent-avatar__character">
+                  <HairBack geometry={geometry} style={identity.hairStyle} />
+                  <Head geometry={geometry} />
+                  <HairFront geometry={geometry} style={identity.hairStyle} />
+                  <Eyes
+                    accessory={identity.accessory}
+                    browAsymmetry={expression.browAsymmetry}
+                    browLift={expression.browLift}
+                    browStyle={identity.browStyle}
+                    eyeStyle={identity.eyeStyle}
+                    featureScale={identity.featureScale}
+                    gazeX={expression.gazeX}
+                    gazeY={expression.gazeY}
+                    geometry={geometry}
+                    personality={identity.personality}
+                    pupilSize={identity.pupilSize}
+                  />
+                  <FaceDetails
+                    faceMark={identity.faceMark}
+                    featureScale={identity.featureScale}
+                    geometry={geometry}
+                    mouth={expression.mouth}
+                    mouthStyle={identity.mouthStyle}
+                    noseStyle={identity.noseStyle}
+                  />
+                </g>
+              </g>
             </g>
+            <StatusEffects
+              actingStyle={identity.actingStyle}
+              dominantSide={identity.dominantSide}
+              geometry={geometry}
+              status={status}
+            />
           </g>
         </g>
       </svg>

@@ -1,7 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import { AgentAvatar, avatarStatuses, createAvatarIdentity } from "../src";
+import {
+  AgentAvatar,
+  avatarStatuses,
+  createAvatarGeometry,
+  createAvatarIdentity,
+} from "../src";
 
 describe("createAvatarIdentity", () => {
   it("reproduces a versioned identity for the same seed", () => {
@@ -10,13 +15,15 @@ describe("createAvatarIdentity", () => {
 
     expect(second).toEqual(first);
     expect(first).toMatchObject({
-      appearanceVersion: 2,
-      headShape: "diamond",
-      hairStyle: "side-sweep",
-      browStyle: "bold",
+      appearanceVersion: 3,
+      headShape: "pear",
+      hairStyle: "buzz",
+      browStyle: "straight",
       mouthStyle: "crooked",
       palette: "ochre",
-      personality: "calm",
+      personality: "curious",
+      actingStyle: "mutterer",
+      dominantSide: "left",
     });
   });
 
@@ -30,18 +37,61 @@ describe("createAvatarIdentity", () => {
     });
   });
 
+  it("keeps version two identities available for saved agents", () => {
+    const identity = createAvatarIdentity("arlo-engineer", 2);
+
+    expect(identity).toMatchObject({
+      appearanceVersion: 2,
+      headShape: "diamond",
+      hairStyle: "side-sweep",
+      palette: "ochre",
+      personality: "calm",
+    });
+  });
+
   it("uses the full appearance vocabulary across a large crew", () => {
     const identities = Array.from({ length: 500 }, (_, index) =>
       createAvatarIdentity(`agent-${index}`),
     );
 
     expect(new Set(identities.map((identity) => identity.seedHash)).size).toBe(500);
-    expect(new Set(identities.map((identity) => identity.headShape)).size).toBe(8);
+    expect(new Set(identities.map((identity) => identity.headShape)).size).toBe(10);
     expect(new Set(identities.map((identity) => identity.hairStyle)).size).toBe(13);
     expect(new Set(identities.map((identity) => identity.browStyle)).size).toBe(5);
     expect(new Set(identities.map((identity) => identity.palette)).size).toBe(6);
     expect(new Set(identities.map((identity) => identity.personality)).size).toBe(5);
+    expect(new Set(identities.map((identity) => identity.actingStyle)).size).toBe(5);
     expect(identities.every((identity) => identity.blinkDurationMs >= 6_800)).toBe(true);
+  });
+
+  it("produces distinct landmark geometry for every head recipe", () => {
+    const byShape = new Map(
+      Array.from({ length: 2_000 }, (_, index) => createAvatarIdentity(`shape-${index}`))
+        .map((identity) => [identity.headShape, identity] as const),
+    );
+    const geometries = [...byShape.values()].map(createAvatarGeometry);
+
+    expect(byShape.size).toBe(10);
+    expect(new Set(geometries.map((geometry) => geometry.headD)).size).toBe(10);
+    expect(Math.max(...geometries.map(({ bounds }) => bounds.right - bounds.left))).toBeGreaterThan(40);
+    expect(Math.max(...geometries.map(({ bounds }) => bounds.bottom - bounds.top))).toBeGreaterThan(53);
+  });
+
+  it("keeps asymmetric face anchors ordered inside their head bounds", () => {
+    const geometries = Array.from({ length: 1_000 }, (_, index) =>
+      createAvatarGeometry(createAvatarIdentity(`bounds-${index}`)),
+    );
+
+    expect(
+      geometries.every(({ bounds, face }) =>
+        face.leftEye.x > bounds.left &&
+        face.rightEye.x < bounds.right &&
+        face.leftEye.x < face.rightEye.x &&
+        face.noseTop.y > Math.min(face.leftEye.y, face.rightEye.y) &&
+        face.mouth.y > face.noseBottom.y &&
+        face.mouth.y < bounds.bottom,
+      ),
+    ).toBe(true);
   });
 });
 
@@ -59,6 +109,7 @@ describe("AgentAvatar", () => {
     expect(markup).toContain(`data-status="${status}"`);
     expect(markup).toContain("data-palette=");
     expect(markup).toContain("data-personality=");
+    expect(markup).toContain("data-acting-style=");
     expect(markup).toContain("role=\"img\"");
     expect(markup).toContain("aria-label=\"Arlo,");
     expect(markup).not.toContain("data-reaction=");
@@ -107,5 +158,31 @@ describe("AgentAvatar", () => {
 
     expect(eyeGroups).toHaveLength(2);
     expect(eyeGroups?.every((group) => group.includes("agent-avatar__pupil"))).toBe(true);
+  });
+
+  it("renders state-specific acting props at hero size", () => {
+    const thinking = renderToStaticMarkup(
+      <AgentAvatar
+        agentId="inez"
+        name="Inez"
+        avatarSeed="cast-57"
+        status="working"
+        size={112}
+      />,
+    );
+    const failed = renderToStaticMarkup(
+      <AgentAvatar
+        agentId="sol"
+        name="Sol"
+        avatarSeed="cast-0"
+        status="failed"
+        size={112}
+      />,
+    );
+
+    expect(thinking).toContain("data-detail=\"hero\"");
+    expect(thinking).toContain("agent-avatar__thought-cloud");
+    expect(thinking).toContain("agent-avatar__mouth-rig");
+    expect(failed).toContain("agent-avatar__tear-drop");
   });
 });

@@ -12,13 +12,19 @@ Original procedural SVG agents for Stave.
 />
 ```
 
-`avatarSeed` and `appearanceVersion` define stable appearance. Version 2 is the default and
-varies silhouette, hair, facial geometry, warm palette, marks, and temperament through
-independent seeded channels. Existing saved agents can request `appearanceVersion={1}`.
+`avatarSeed` and `appearanceVersion` define stable appearance. Version 3 is the default. It
+builds a shared landmark geometry for the head, hair envelope, ears, eyes, nose, mouth, and
+marks, then adds deterministic crown lean, unequal fullness, jaw skew, and chin offset. Existing
+saved agents can still request `appearanceVersion={1}` or `appearanceVersion={2}`.
 
 `status` affects expression and work motion, never identity. Temperament changes how an agent
-rests and reacts without changing the meaning of a status. Terminal reactions fire only when
-the status changes; they do not loop on mount.
+rests, while a seeded acting style chooses whether it tends to ponder, mutter, nod, react, or
+stay reserved. Working, reviewing, waiting, queued, and blocked states use short acting beats;
+done and failed reactions fire only when the status changes and never loop on mount.
+
+Hero portraits are free-standing doodles so the silhouette remains visible. Compact board
+avatars retain the paper badge and remove thought marks, tears, sparkles, facial marks, and
+secondary movement.
 
 The component defaults to accessible standalone output. Set `decorative` when adjacent text
 already identifies the agent and state, or `motion="off"` for a fully static rendering.

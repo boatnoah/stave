@@ -1,90 +1,156 @@
+import type { AvatarGeometry, AvatarPoint } from "../geometry/create-avatar-geometry";
 import type { HairStyle } from "../types";
 
 interface HairProps {
+  readonly geometry: AvatarGeometry;
   readonly style: HairStyle;
 }
 
-export function HairBack({ style }: HairProps) {
-  if (style === "bob") {
-    return (
-      <path
-        className="agent-avatar__hair-back"
-        d="M14.1 27 C13.2 15.3 21 6.4 32 6.5 C43.7 6.5 51.3 15.3 50.1 29.5 L48.2 44.5 L42.1 42.4 L42.8 21.4 L21.6 20.5 L21.8 42.6 L15.6 45 Z"
-      />
-    );
+const n = (value: number) => Math.round(value * 10) / 10;
+
+function crownPath(
+  geometry: AvatarGeometry,
+  { side = 1.5, lift = 1.3 }: { readonly side?: number; readonly lift?: number } = {},
+): string {
+  const { leftTemple, leftCrown, top, rightCrown, rightTemple } = geometry.hair;
+
+  return [
+    `M${n(leftTemple.x - side)} ${n(leftTemple.y + 2)}`,
+    `C${n(leftTemple.x - side)} ${n(leftCrown.y + 2)}`,
+    `${n(leftCrown.x - 1)} ${n(leftCrown.y - lift)}`,
+    `${n(top.x)} ${n(top.y - lift)}`,
+    `C${n(rightCrown.x + 1)} ${n(rightCrown.y - lift)}`,
+    `${n(rightTemple.x + side)} ${n(rightCrown.y + 1)}`,
+    `${n(rightTemple.x + side)} ${n(rightTemple.y + 2)}`,
+  ].join(" ");
+}
+
+function capPath(
+  geometry: AvatarGeometry,
+  inner: "soft" | "wave" | "sweep" | "jagged" | "low" = "soft",
+  options?: { readonly side?: number; readonly lift?: number },
+): string {
+  const { leftTemple, rightTemple, top } = geometry.hair;
+  const centerX = (geometry.bounds.left + geometry.bounds.right) / 2;
+  const innerY = Math.max(top.y + 8, Math.min(leftTemple.y, rightTemple.y) - 1);
+  const outer = crownPath(geometry, options);
+
+  if (inner === "wave") {
+    return `${outer} C${n(rightTemple.x - 1)} ${n(innerY - 1)} ${n(centerX + 7)} ${n(innerY + 7)} ${n(centerX + 1)} ${n(innerY + 1)} C${n(centerX - 5)} ${n(innerY - 3)} ${n(leftTemple.x + 4)} ${n(innerY + 4)} ${n(leftTemple.x - (options?.side ?? 1.5))} ${n(leftTemple.y + 2)} Z`;
   }
 
-  if (style === "wave") {
-    return (
-      <path
-        className="agent-avatar__hair-back"
-        d="M15.1 28 C13.8 15.5 20.7 6.2 31.8 6.2 C43.8 6.1 51 15.1 49.9 30.4 C49.1 41.3 51.7 48.3 47.6 54.5 C44.1 50.9 42.4 45.3 42.8 38.4 L21 38.4 C21.5 45.3 19.8 51.1 16.1 54.6 C12.8 48.5 15.7 40.2 15.1 28 Z"
-      />
-    );
+  if (inner === "sweep") {
+    return `${outer} C${n(rightTemple.x - 1)} ${n(innerY - 3)} ${n(centerX + 7)} ${n(innerY - 7)} ${n(centerX + 2)} ${n(innerY - 8)} C${n(centerX - 3)} ${n(innerY + 2)} ${n(leftTemple.x + 3)} ${n(innerY + 4)} ${n(leftTemple.x - (options?.side ?? 1.5))} ${n(leftTemple.y + 2)} Z`;
   }
+
+  if (inner === "jagged") {
+    return `${outer} L${n(rightTemple.x - 3)} ${n(innerY + 4)} L${n(centerX + 8)} ${n(innerY)} L${n(centerX + 4)} ${n(innerY + 6)} L${n(centerX - 1)} ${n(innerY + 1)} L${n(centerX - 7)} ${n(innerY + 6)} L${n(leftTemple.x + 3)} ${n(innerY + 1)} Z`;
+  }
+
+  if (inner === "low") {
+    return `${outer} C${n(rightTemple.x - 6)} ${n(innerY + 1)} ${n(leftTemple.x + 6)} ${n(innerY + 1)} ${n(leftTemple.x - (options?.side ?? 1.5))} ${n(leftTemple.y + 2)} Z`;
+  }
+
+  return `${outer} C${n(rightTemple.x - 3)} ${n(innerY - 3)} ${n(centerX + 4)} ${n(innerY - 3)} ${n(centerX)} ${n(innerY - 5)} C${n(centerX - 5)} ${n(innerY + 1)} ${n(leftTemple.x + 4)} ${n(innerY + 1)} ${n(leftTemple.x - (options?.side ?? 1.5))} ${n(leftTemple.y + 2)} Z`;
+}
+
+function LongBack({
+  bottom,
+  geometry,
+  variant,
+}: {
+  readonly bottom: number;
+  readonly geometry: AvatarGeometry;
+  readonly variant: "bob" | "wave" | "shag";
+}) {
+  const leftX = geometry.bounds.left - 1.4;
+  const rightX = geometry.bounds.right + 1.4;
+  const leftEnd = variant === "shag" ? `${n(leftX + 4)} ${bottom - 5} L${n(leftX + 1)} ${bottom}` : `${n(leftX)} ${bottom}`;
+  const rightEnd = variant === "shag" ? `${n(rightX - 1)} ${bottom} L${n(rightX - 4)} ${bottom - 5}` : `${n(rightX)} ${bottom}`;
+
+  return (
+    <path
+      className="agent-avatar__hair-back"
+      d={`${crownPath(geometry, { side: 2.4, lift: 2.1 })} C${n(rightX + 1)} 34 ${n(rightX + 1)} ${bottom - 5} ${rightEnd} Q32 ${bottom + (variant === "wave" ? 3 : 0)} ${leftEnd} C${n(leftX - 1)} ${bottom - 7} ${n(leftX - 1)} 34 ${n(geometry.hair.leftTemple.x - 2.4)} ${n(geometry.hair.leftTemple.y + 2)} Z`}
+    />
+  );
+}
+
+function CrownCircles({ geometry, front = false }: { readonly geometry: AvatarGeometry; readonly front?: boolean }) {
+  const points: readonly AvatarPoint[] = [
+    geometry.hair.leftTemple,
+    geometry.hair.leftCrown,
+    geometry.hair.top,
+    geometry.hair.rightCrown,
+    geometry.hair.rightTemple,
+  ];
+
+  return (
+    <g className={front ? "agent-avatar__hair-curls-front" : "agent-avatar__hair-back agent-avatar__hair-curls"}>
+      {points.map((item, index) => (
+        <circle
+          key={index}
+          cx={item.x + (index - 2) * 0.35}
+          cy={item.y + (front ? 0.5 : -0.7)}
+          r={front ? 4.7 : 5.7}
+        />
+      ))}
+    </g>
+  );
+}
+
+export function HairBack({ geometry, style }: HairProps) {
+  if (style === "bob") return <LongBack bottom={47} geometry={geometry} variant="bob" />;
+  if (style === "wave") return <LongBack bottom={57} geometry={geometry} variant="wave" />;
+  if (style === "shag") return <LongBack bottom={49} geometry={geometry} variant="shag" />;
 
   if (style === "curls") {
-    return (
-      <g className="agent-avatar__hair-back agent-avatar__hair-curls">
-        <circle cx="17" cy="20" r="6.1" />
-        <circle cx="22" cy="12.7" r="6.4" />
-        <circle cx="31" cy="9.1" r="6.7" />
-        <circle cx="40.4" cy="12.2" r="6.5" />
-        <circle cx="47" cy="19.9" r="6.2" />
-        <circle cx="48.5" cy="29.3" r="5.5" />
-        <circle cx="15.4" cy="29.5" r="5.5" />
-      </g>
-    );
+    return <CrownCircles geometry={geometry} />;
   }
 
   if (style === "bun") {
+    const { rightCrown, top } = geometry.hair;
     return (
       <g className="agent-avatar__hair-back">
-        <circle cx="40.7" cy="8.3" r="7.2" />
-        <path d="M16 27 C15 15 22 7.5 32 7.4 C42.8 7.2 49.5 15.5 48.6 28.5 L45 37 L19.5 37 Z" />
+        <circle cx={rightCrown.x + 3.4} cy={top.y - 1.2} r="7.1" />
+        <path d={`${capPath(geometry, "low", { side: 2.2, lift: 2 })}`} />
       </g>
     );
   }
 
   if (style === "locs") {
+    const { leftTemple, rightTemple } = geometry.hair;
     return (
       <g className="agent-avatar__hair-back agent-avatar__hair-locs">
-        <path d="M15.5 23 C14 13.3 21.4 6.8 31.9 6.8 C43.4 6.8 50 14.6 48.7 25.4" />
-        <path d="M17.7 20.4 C14.8 34.2 16 47.4 14.6 54" />
-        <path d="M22.3 17.6 C20.2 32.5 21.6 46 20.3 56" />
-        <path d="M42.2 17.8 C44.2 32 43.1 46.8 44.4 55.5" />
-        <path d="M46.5 21 C49.1 34.9 48.1 47.5 49.4 53.5" />
+        <path d={crownPath(geometry, { side: 2.2, lift: 2 })} />
+        <path d={`M${n(leftTemple.x - 1)} ${n(leftTemple.y)} C${n(leftTemple.x - 3)} 36 ${n(leftTemple.x - 2)} 47 ${n(leftTemple.x - 3)} 56`} />
+        <path d={`M${n(leftTemple.x + 4)} ${n(leftTemple.y - 3)} C${n(leftTemple.x + 2)} 36 ${n(leftTemple.x + 4)} 48 ${n(leftTemple.x + 3)} 58`} />
+        <path d={`M${n(rightTemple.x - 4)} ${n(rightTemple.y - 3)} C${n(rightTemple.x - 2)} 36 ${n(rightTemple.x - 4)} 48 ${n(rightTemple.x - 3)} 57`} />
+        <path d={`M${n(rightTemple.x + 1)} ${n(rightTemple.y)} C${n(rightTemple.x + 3)} 36 ${n(rightTemple.x + 2)} 48 ${n(rightTemple.x + 3)} 55`} />
       </g>
     );
   }
 
-  if (style === "shag") {
-    return (
-      <path
-        className="agent-avatar__hair-back"
-        d="M14.8 27 C13.8 15.7 20.4 7.1 31.8 6.9 C43.8 6.7 50.5 15.1 49.6 29 L48.1 42.2 L44 39.4 L41.7 45.7 L38.4 39.1 L24.7 39.6 L21.6 45.5 L18.2 39.4 L14.9 42.1 Z"
-      />
-    );
-  }
-
   if (style === "double-puff") {
+    const { leftCrown, rightCrown } = geometry.hair;
     return (
       <g className="agent-avatar__hair-back agent-avatar__hair-puffs">
-        <circle cx="14.2" cy="13.2" r="7.1" />
-        <circle cx="49.8" cy="13.2" r="7.1" />
-        <path d="M17.3 24 C17.8 13.6 23.7 8.2 32 8.2 C40.4 8.2 46.2 13.9 46.7 24 Z" />
+        <circle cx={leftCrown.x - 4.4} cy={leftCrown.y - 2.8} r="7.2" />
+        <circle cx={rightCrown.x + 4.4} cy={rightCrown.y - 2.8} r="7.2" />
+        <path d={capPath(geometry, "low", { side: 1.8, lift: 1.5 })} />
       </g>
     );
   }
 
   if (style === "side-braid") {
+    const x = geometry.bounds.right + 0.2;
     return (
       <g className="agent-avatar__hair-back agent-avatar__hair-braid">
-        <path d="M15.4 27 C14.6 15.2 21.3 6.9 31.9 6.9 C43.5 6.8 49.8 15.4 48.8 29.4 L45.3 39.2 L19.4 38.6 Z" />
-        <circle cx="47.5" cy="38" r="3.4" />
-        <circle cx="48.8" cy="44" r="3.1" />
-        <circle cx="47.6" cy="49.4" r="2.8" />
-        <path className="agent-avatar__hair-tie" d="M45.7 52.1 L49.4 53.7" />
+        <path d={`${capPath(geometry, "low", { side: 2.2, lift: 2 })}`} />
+        <circle cx={x} cy="37.5" r="3.5" />
+        <circle cx={x + 1.2} cy="43.8" r="3.2" />
+        <circle cx={x} cy="49.6" r="2.8" />
+        <path className="agent-avatar__hair-tie" d={`M${n(x - 1.6)} 52.1 L${n(x + 2)} 53.6`} />
       </g>
     );
   }
@@ -92,78 +158,18 @@ export function HairBack({ style }: HairProps) {
   return null;
 }
 
-export function HairFront({ style }: HairProps) {
-  if (style === "bare") {
-    return null;
-  }
+export function HairFront({ geometry, style }: HairProps) {
+  if (style === "bare") return null;
 
-  if (style === "crop") {
-    return (
-      <path
-        className="agent-avatar__hair"
-        d="M16.1 24 C16.8 13 23.2 8.1 32.1 8 C42 8 48.1 14.8 48.2 23.6 C43.1 21.2 39.8 17.7 36.3 15.1 C31.4 20.1 24.9 22.4 16.1 24 Z"
-      />
-    );
-  }
-
-  if (style === "wave") {
-    return (
-      <g>
-        <path
-          className="agent-avatar__hair"
-          d="M15.2 26.5 C14.7 15 21.3 7.1 31.5 7 C42.9 6.9 49.4 14.9 49 27.3 C45.5 25.2 43.5 21.8 42.8 17.9 C38.8 23.8 33.8 24 30.4 18 C26.6 23.7 21.9 25.8 15.2 26.5 Z"
-        />
-        <path className="agent-avatar__hair-detail" d="M24 13.2 C27.7 15.8 31.1 16 34.6 13.4" />
-      </g>
-    );
-  }
-
-  if (style === "bob") {
-    return (
-      <g>
-        <path
-          className="agent-avatar__hair"
-          d="M15.2 26.7 C15 15.3 21.9 7.7 32 7.5 C43.1 7.3 49.6 15.8 49 28 C44.1 25.9 41.2 22.7 40 17.8 C34.3 22.3 27.7 22.8 21.5 18.5 C20.7 22.7 18.7 25.2 15.2 26.7 Z"
-        />
-        <path className="agent-avatar__hair-detail" d="M21.5 18.5 C27.7 22.8 34.3 22.3 40 17.8" />
-      </g>
-    );
-  }
-
-  if (style === "tuft") {
-    return (
-      <g>
-        <path
-          className="agent-avatar__hair"
-          d="M17.2 23.8 C18.3 14.7 23.4 9.3 31.8 8.7 C40.4 8.1 46 13.2 47.4 21.7 C42.2 19.9 37.2 18.6 33.1 15.2 C28.2 19.8 23.3 21.7 17.2 23.8 Z"
-        />
-        <path className="agent-avatar__hair-tuft" d="M27.2 10.2 C28.2 5.9 31.8 4.9 32.4 10.2 C34.7 5.9 38.2 7 37.1 11.3" />
-      </g>
-    );
-  }
+  if (style === "curls") return <CrownCircles geometry={geometry} front />;
 
   if (style === "cap") {
+    const y = Math.max(19, geometry.hair.top.y + 12);
     return (
       <g>
-        <path
-          className="agent-avatar__cap"
-          d="M16.1 21.9 C18.3 12.4 24.4 8.3 32 8.2 C40.2 8.1 46.4 12.8 48 21.9 Z"
-        />
-        <path className="agent-avatar__cap-line" d="M15.2 22.2 C25.2 20.5 39 20.5 49.1 22.1" />
-        <path className="agent-avatar__cap-brim" d="M31.2 22 C37.9 21 43 22.1 46.2 24.7" />
-      </g>
-    );
-  }
-
-  if (style === "curls") {
-    return (
-      <g className="agent-avatar__hair-curls-front">
-        <circle cx="21.2" cy="15.1" r="5.1" />
-        <circle cx="28.5" cy="11.1" r="5.4" />
-        <circle cx="36.1" cy="11.3" r="5.3" />
-        <circle cx="43.1" cy="15.8" r="5" />
-        <circle cx="18.5" cy="21.6" r="4.7" />
-        <circle cx="46.2" cy="21.7" r="4.7" />
+        <path className="agent-avatar__cap" d={capPath(geometry, "low", { side: 2, lift: 2.4 })} />
+        <path className="agent-avatar__cap-line" d={`M${n(geometry.bounds.left + 2)} ${n(y)} Q32 ${n(y - 2)} ${n(geometry.bounds.right - 1)} ${n(y)}`} />
+        <path className="agent-avatar__cap-brim" d={`M31 ${n(y)} Q40 ${n(y - 1)} ${n(geometry.bounds.right)} ${n(y + 3)}`} />
       </g>
     );
   }
@@ -171,88 +177,55 @@ export function HairFront({ style }: HairProps) {
   if (style === "buzz") {
     return (
       <g>
-        <path
-          className="agent-avatar__hair agent-avatar__hair--buzz"
-          d="M17.7 21.8 C19 12.7 24.4 8 32 7.9 C40 7.9 45.6 13.2 47 22 C39.1 18.9 25.5 18.8 17.7 21.8 Z"
-        />
-        <path className="agent-avatar__hair-detail" d="M22.3 15.5 L23.1 16.2 M28.6 12.5 L29 13.3 M35.3 12.7 L35 13.5 M41 15.5 L40.3 16.2" />
-      </g>
-    );
-  }
-
-  if (style === "side-sweep") {
-    return (
-      <g>
-        <path
-          className="agent-avatar__hair"
-          d="M15.4 26.3 C15 15.1 21.6 7.5 31.7 7.3 C43 7.1 49.4 15.1 48.9 27 C43.4 24.8 39.6 20.5 37.2 14.8 C31.8 20.5 25 24.2 15.4 26.3 Z"
-        />
-        <path className="agent-avatar__hair-detail" d="M37.2 14.8 C32.4 19.5 27.1 22.5 21.1 24" />
-      </g>
-    );
-  }
-
-  if (style === "bun") {
-    return (
-      <g>
-        <path
-          className="agent-avatar__hair"
-          d="M16.3 25.6 C16.3 14.8 22.4 8 32 7.8 C42.6 7.6 48.5 15.3 48.2 26.7 C42.8 23.7 39.8 20.6 37.8 15.8 C33.7 20.2 26.8 22.5 16.3 25.6 Z"
-        />
-        <path className="agent-avatar__hair-detail" d="M35.1 10.1 C39.8 9.1 43.1 10.5 45 13.4" />
-      </g>
-    );
-  }
-
-  if (style === "locs") {
-    return (
-      <g>
-        <path
-          className="agent-avatar__hair"
-          d="M16 24.5 C16.5 13.8 22.6 7.1 32 7 C42.5 6.9 48.2 14.4 48 25.2 C42.8 22.8 38.8 20.3 35.2 15.4 C30.6 20.7 24.7 23 16 24.5 Z"
-        />
-        <path className="agent-avatar__hair-detail" d="M22.1 14.1 L20.4 25.9 M28 10.7 L27.1 22.2 M35.1 10.2 L36.3 20.9 M41.2 13.1 L43.4 24.5" />
+        <path className="agent-avatar__hair agent-avatar__hair--buzz" d={capPath(geometry, "low", { side: 0.6, lift: 0.4 })} />
+        <path className="agent-avatar__hair-detail" d={`M${n(geometry.hair.leftCrown.x)} ${n(geometry.hair.leftCrown.y + 4)} l1 1 M${n(geometry.hair.top.x)} ${n(geometry.hair.top.y + 4)} l-.3 1 M${n(geometry.hair.rightCrown.x)} ${n(geometry.hair.rightCrown.y + 4)} l-.8 1`} />
       </g>
     );
   }
 
   if (style === "quiff") {
+    const top = geometry.hair.top;
     return (
       <g>
+        <path className="agent-avatar__hair" d={capPath(geometry, "sweep", { side: 1.7, lift: 2.5 })} />
         <path
           className="agent-avatar__hair"
-          d="M16.2 24.1 C16.3 15.6 21.1 10.1 27.6 8.2 C27.1 3.2 32.2 2.5 34.6 7.5 C38.8 2.8 43.7 5.7 42 10 C45.8 12.6 47.8 17.2 47.9 23.1 C40.4 20.8 36.1 17.4 33.4 13.8 C28.8 19.1 23.5 22.3 16.2 24.1 Z"
+          d={`M${n(top.x - 5)} ${n(top.y + 2)} C${n(top.x - 7)} ${n(top.y - 4)} ${n(top.x - 1)} ${n(top.y - 6)} ${n(top.x + 1)} ${n(top.y - 1)} C${n(top.x + 5)} ${n(top.y - 6)} ${n(top.x + 10)} ${n(top.y - 2)} ${n(top.x + 6)} ${n(top.y + 3)} Z`}
         />
-        <path className="agent-avatar__hair-detail" d="M29.1 8.5 C33.1 10.2 36.1 10.2 40.3 8.5" />
       </g>
     );
   }
 
-  if (style === "shag") {
+  if (style === "tuft") {
+    const top = geometry.hair.top;
     return (
-      <path
-        className="agent-avatar__hair"
-        d="M15.2 26.5 C15 15.2 21.5 7.2 31.7 7 C43.1 6.8 49.4 15.2 48.9 27.4 L44.5 24.2 L42.1 29.1 L38.8 22.1 L34.8 27.6 L30.5 20.8 L25.2 26.6 L21.3 21.3 L18.7 27.8 Z"
-      />
+      <g>
+        <path className="agent-avatar__hair" d={capPath(geometry, "soft")} />
+        <path className="agent-avatar__hair-tuft" d={`M${n(top.x - 4)} ${n(top.y + 3)} C${n(top.x - 3)} ${n(top.y - 3)} ${n(top.x + 1)} ${n(top.y - 4)} ${n(top.x + 1)} ${n(top.y + 2)} C${n(top.x + 4)} ${n(top.y - 2)} ${n(top.x + 7)} ${n(top.y)} ${n(top.x + 5)} ${n(top.y + 4)}`} />
+      </g>
     );
   }
 
-  if (style === "double-puff") {
-    return (
-      <path
-        className="agent-avatar__hair"
-        d="M17 24 C17.8 14.6 23 9.1 32 9 C41.2 8.9 46.5 14.8 47.2 24 C42.2 21.4 38.2 19.1 35.2 15.2 C31.5 19.7 25 22.2 17 24 Z"
-      />
-    );
-  }
+  const inner =
+    style === "wave" || style === "bob"
+      ? "wave"
+      : style === "side-sweep" || style === "bun" || style === "side-braid"
+        ? "sweep"
+        : style === "shag"
+          ? "jagged"
+          : style === "locs" || style === "double-puff"
+            ? "low"
+            : "soft";
 
   return (
     <g>
-      <path
-        className="agent-avatar__hair"
-        d="M15.5 26 C15.2 15.2 21.5 7.3 31.9 7.1 C43.2 6.9 49.3 15.1 48.8 27 C43.8 25 40.4 21.1 38.2 16 C32.5 21.6 25.2 24.2 15.5 26 Z"
-      />
-      <path className="agent-avatar__hair-detail" d="M38.2 16 C33.6 20.2 28.1 22.8 21.8 24.4" />
+      <path className="agent-avatar__hair" d={capPath(geometry, inner)} />
+      {style === "crop" || style === "side-sweep" || style === "wave" || style === "bob" ? (
+        <path
+          className="agent-avatar__hair-detail"
+          d={`M${n(geometry.hair.leftCrown.x + 2)} ${n(geometry.hair.leftCrown.y + 5)} Q${n(geometry.hair.top.x)} ${n(geometry.hair.top.y + 8)} ${n(geometry.hair.rightCrown.x - 1)} ${n(geometry.hair.rightCrown.y + 4)}`}
+        />
+      ) : null}
     </g>
   );
 }

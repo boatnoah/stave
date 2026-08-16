@@ -1,6 +1,8 @@
 import type {
   AccessoryStyle,
+  AvatarActingStyle,
   AvatarAppearanceVersion,
+  AvatarDominantSide,
   AvatarIdentity,
   AvatarPaletteName,
   AvatarPersonality,
@@ -35,6 +37,7 @@ const headShapes: readonly HeadShape[] = [
   "long",
   "diamond",
 ];
+const expressiveHeadShapes: readonly HeadShape[] = [...headShapes, "bean", "box"];
 const hairStyles: readonly HairStyle[] = [
   "bare",
   "crop",
@@ -86,6 +89,14 @@ const personalities: readonly AvatarPersonality[] = [
   "bright",
   "wry",
 ];
+const actingStyles: readonly AvatarActingStyle[] = [
+  "ponderer",
+  "mutterer",
+  "nodder",
+  "reactive",
+  "reserved",
+];
+const dominantSides: readonly AvatarDominantSide[] = ["left", "right"];
 
 function hashSeed(value: string): number {
   let hash = 0x811c9dc5;
@@ -152,6 +163,8 @@ function createLegacyIdentity(avatarSeed: string): AvatarIdentity {
     faceMark: "none",
     palette: "ink",
     personality: "calm",
+    actingStyle: "reserved",
+    dominantSide: "right",
     eyeSpacing: round(between(random, 8.4, 10.8)),
     eyeY: 31,
     mouthY: 43.2,
@@ -166,7 +179,7 @@ function createLegacyIdentity(avatarSeed: string): AvatarIdentity {
   };
 }
 
-function createExpandedIdentity(avatarSeed: string): AvatarIdentity {
+function createVersion2Identity(avatarSeed: string): AvatarIdentity {
   const seedHash = hashSeed(`2:${avatarSeed.trim().toLowerCase()}`);
 
   return {
@@ -182,6 +195,8 @@ function createExpandedIdentity(avatarSeed: string): AvatarIdentity {
     mouthStyle: pickFor(seedHash, "mouth", mouthStyles),
     faceMark: pickFor(seedHash, "face-mark", faceMarks),
     palette: pickFor(seedHash, "palette", palettes),
+    actingStyle: "reserved",
+    dominantSide: "right",
     eyeSpacing: round(betweenFor(seedHash, "eye-spacing", 7.7, 11.15)),
     eyeY: round(betweenFor(seedHash, "eye-y", 29.8, 32.1)),
     mouthY: round(betweenFor(seedHash, "mouth-y", 42.2, 45.2)),
@@ -196,11 +211,43 @@ function createExpandedIdentity(avatarSeed: string): AvatarIdentity {
   };
 }
 
+function createExpressiveIdentity(avatarSeed: string): AvatarIdentity {
+  const seedHash = hashSeed(`3:${avatarSeed.trim().toLowerCase()}`);
+
+  return {
+    appearanceVersion: 3,
+    seedHash,
+    personality: pickFor(seedHash, "personality", personalities),
+    actingStyle: pickFor(seedHash, "acting-style", actingStyles),
+    dominantSide: pickFor(seedHash, "dominant-side", dominantSides),
+    headShape: pickFor(seedHash, "head", expressiveHeadShapes),
+    hairStyle: pickFor(seedHash, "hair", hairStyles),
+    eyeStyle: pickFor(seedHash, "eyes", eyeStyles),
+    browStyle: pickFor(seedHash, "brows", browStyles),
+    accessory: pickFor(seedHash, "accessory", accessories),
+    noseStyle: pickFor(seedHash, "nose", noseStyles),
+    mouthStyle: pickFor(seedHash, "mouth", mouthStyles),
+    faceMark: pickFor(seedHash, "face-mark", faceMarks),
+    palette: pickFor(seedHash, "palette", palettes),
+    eyeSpacing: round(betweenFor(seedHash, "eye-spacing", 7.7, 11.15)),
+    eyeY: round(betweenFor(seedHash, "eye-y", 29.8, 32.1)),
+    mouthY: round(betweenFor(seedHash, "mouth-y", 42.2, 45.2)),
+    pupilSize: round(betweenFor(seedHash, "pupil-size", 0.98, 1.38)),
+    featureScale: round(betweenFor(seedHash, "feature-scale", 0.92, 1.08)),
+    faceOffsetX: round(betweenFor(seedHash, "face-offset", -0.65, 0.65)),
+    lineTilt: round(betweenFor(seedHash, "line-tilt", -1.1, 1.1)),
+    restingTilt: round(betweenFor(seedHash, "resting-tilt", -0.8, 0.8)),
+    motionIntensity: round(betweenFor(seedHash, "motion-intensity", 0.76, 1.25)),
+    blinkDurationMs: Math.round(betweenFor(seedHash, "blink-duration", 6_800, 13_600)),
+    motionDelayMs: -Math.round(betweenFor(seedHash, "motion-delay", 400, 7_200)),
+  };
+}
+
 export function createAvatarIdentity(
   avatarSeed: string,
-  appearanceVersion: AvatarAppearanceVersion = 2,
+  appearanceVersion: AvatarAppearanceVersion = 3,
 ): AvatarIdentity {
-  return appearanceVersion === 1
-    ? createLegacyIdentity(avatarSeed)
-    : createExpandedIdentity(avatarSeed);
+  if (appearanceVersion === 1) return createLegacyIdentity(avatarSeed);
+  if (appearanceVersion === 2) return createVersion2Identity(avatarSeed);
+  return createExpressiveIdentity(avatarSeed);
 }

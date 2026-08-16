@@ -1,13 +1,13 @@
+import type { AvatarGeometry } from "../geometry/create-avatar-geometry";
 import type { FaceMark, MouthStyle, NoseStyle } from "../types";
 import type { MouthShape } from "../motion/status-expression";
 
 interface FaceDetailsProps {
-  readonly eyeY: number;
   readonly faceMark: FaceMark;
   readonly featureScale: number;
+  readonly geometry: AvatarGeometry;
   readonly mouth: MouthShape;
   readonly mouthStyle: MouthStyle;
-  readonly mouthY: number;
   readonly noseStyle: NoseStyle;
 }
 
@@ -21,6 +21,7 @@ const mouthWidths: Record<MouthStyle, number> = {
 function mouthPath(
   shape: Exclude<MouthShape, "open">,
   style: MouthStyle,
+  centerX: number,
   y: number,
   halfWidth: number,
 ): string {
@@ -28,132 +29,112 @@ function mouthPath(
   const rightY = style === "crooked" ? y - 0.65 : y;
 
   if (shape === "focused") {
-    return `M${32 - halfWidth} ${leftY} Q32 ${y + 0.5} ${32 + halfWidth} ${rightY}`;
+    return `M${centerX - halfWidth} ${leftY} Q${centerX} ${y + 0.5} ${centerX + halfWidth} ${rightY}`;
   }
-
   if (shape === "concerned") {
-    return `M${32 - halfWidth} ${leftY + 1.1} Q32 ${y - 2.4} ${32 + halfWidth} ${rightY + 1.1}`;
+    return `M${centerX - halfWidth} ${leftY + 1.1} Q${centerX} ${y - 2.4} ${centerX + halfWidth} ${rightY + 1.1}`;
   }
-
   if (shape === "smile") {
-    return `M${32 - halfWidth} ${leftY - 0.6} Q32 ${y + 3.2} ${32 + halfWidth} ${rightY - 0.6}`;
+    return `M${centerX - halfWidth} ${leftY - 0.6} Q${centerX} ${y + 3.2} ${centerX + halfWidth} ${rightY - 0.6}`;
   }
-
   if (shape === "smirk") {
-    return `M${32 - halfWidth} ${y + 0.8} Q${32.4} ${y + 1.8} ${32 + halfWidth} ${y - 1.1}`;
+    return `M${centerX - halfWidth} ${y + 0.8} Q${centerX + 0.4} ${y + 1.8} ${centerX + halfWidth} ${y - 1.1}`;
   }
-
-  return `M${32 - halfWidth} ${leftY} Q32 ${y + 1.15} ${32 + halfWidth} ${rightY}`;
+  return `M${centerX - halfWidth} ${leftY} Q${centerX} ${y + 1.15} ${centerX + halfWidth} ${rightY}`;
 }
 
-function Nose({ eyeY, featureScale, style }: {
-  readonly eyeY: number;
-  readonly featureScale: number;
-  readonly style: NoseStyle;
-}) {
-  const top = eyeY + 2.4;
-  const bottom = eyeY + 8.15 * featureScale;
+function Nose({ geometry, style }: { readonly geometry: AvatarGeometry; readonly style: NoseStyle }) {
+  const { noseTop: top, noseBottom: bottom } = geometry.face;
+  const centerX = (top.x + bottom.x) / 2;
 
   if (style === "button") {
-    return (
-      <path
-        className="agent-avatar__nose"
-        d={`M${29.9} ${bottom - 0.35} Q32 ${bottom + 1.5} ${34.1} ${bottom - 0.35}`}
-      />
-    );
+    return <path className="agent-avatar__nose" d={`M${centerX - 2.1} ${bottom.y - 0.35} Q${centerX} ${bottom.y + 1.5} ${centerX + 2.1} ${bottom.y - 0.35}`} />;
   }
-
   if (style === "wedge") {
-    return (
-      <path
-        className="agent-avatar__nose"
-        d={`M31 ${top} L29.9 ${bottom} Q32 ${bottom + 1.1} 34 ${bottom - 0.1}`}
-      />
-    );
+    return <path className="agent-avatar__nose" d={`M${top.x - 1} ${top.y} L${bottom.x - 2.1} ${bottom.y} Q${centerX} ${bottom.y + 1.1} ${bottom.x + 2} ${bottom.y - 0.1}`} />;
   }
-
   if (style === "dash") {
-    return <path className="agent-avatar__nose" d={`M30.7 ${bottom} Q32 ${bottom + 0.55} 33.3 ${bottom}`} />;
+    return <path className="agent-avatar__nose" d={`M${bottom.x - 1.3} ${bottom.y} Q${centerX} ${bottom.y + 0.55} ${bottom.x + 1.3} ${bottom.y}`} />;
   }
-
   return (
     <path
       className="agent-avatar__nose"
-      d={`M32 ${top} C31.1 ${top + 2.1} 30.3 ${bottom - 1.2} 30.6 ${bottom} C31.4 ${bottom + 0.7} 33 ${bottom + 0.65} 33.7 ${bottom - 0.05}`}
+      d={`M${top.x} ${top.y} C${top.x - 0.9} ${top.y + 2.1} ${bottom.x - 1.7} ${bottom.y - 1.2} ${bottom.x - 1.4} ${bottom.y} C${bottom.x - 0.6} ${bottom.y + 0.7} ${bottom.x + 1} ${bottom.y + 0.65} ${bottom.x + 1.7} ${bottom.y - 0.05}`}
     />
   );
 }
 
-function FaceMarks({ faceMark, eyeY }: { readonly faceMark: FaceMark; readonly eyeY: number }) {
-  const markY = eyeY + 7.2;
+function FaceMarks({ faceMark, geometry }: { readonly faceMark: FaceMark; readonly geometry: AvatarGeometry }) {
+  const left = geometry.face.leftMark;
+  const right = geometry.face.rightMark;
 
   if (faceMark === "freckles") {
     return (
       <g className="agent-avatar__face-mark agent-avatar__face-mark--freckles">
-        <circle cx="21.7" cy={markY} r="0.55" />
-        <circle cx="24.1" cy={markY + 0.7} r="0.45" />
-        <circle cx="26.1" cy={markY - 0.1} r="0.38" />
-        <circle cx="37.9" cy={markY - 0.1} r="0.38" />
-        <circle cx="39.9" cy={markY + 0.7} r="0.45" />
-        <circle cx="42.3" cy={markY} r="0.55" />
+        <circle cx={left.x - 2} cy={left.y} r="0.55" />
+        <circle cx={left.x + 0.3} cy={left.y + 0.7} r="0.45" />
+        <circle cx={left.x + 2.3} cy={left.y - 0.1} r="0.38" />
+        <circle cx={right.x - 2.3} cy={right.y - 0.1} r="0.38" />
+        <circle cx={right.x - 0.3} cy={right.y + 0.7} r="0.45" />
+        <circle cx={right.x + 2} cy={right.y} r="0.55" />
       </g>
     );
   }
-
   if (faceMark === "blush") {
     return (
       <g className="agent-avatar__face-mark agent-avatar__face-mark--blush">
-        <ellipse cx="21.8" cy={markY + 0.2} rx="3.1" ry="1.25" />
-        <ellipse cx="42.2" cy={markY + 0.2} rx="3.1" ry="1.25" />
+        <ellipse cx={left.x} cy={left.y + 0.2} rx="3.1" ry="1.25" />
+        <ellipse cx={right.x} cy={right.y + 0.2} rx="3.1" ry="1.25" />
       </g>
     );
   }
-
   if (faceMark === "mole") {
-    return <circle className="agent-avatar__face-mark agent-avatar__face-mark--mole" cx="41.2" cy={markY + 1.1} r="0.72" />;
+    return <circle className="agent-avatar__face-mark agent-avatar__face-mark--mole" cx={right.x + 0.4} cy={right.y + 1.1} r="0.72" />;
   }
-
   if (faceMark === "scar") {
     return (
       <path
         className="agent-avatar__face-mark agent-avatar__face-mark--scar"
-        d={`M21.1 ${markY - 2.6} L24.8 ${markY + 2.4} M21.1 ${markY - 0.7} L23.3 ${markY - 2.1} M22.5 ${markY + 1.1} L24.8 ${markY - 0.4}`}
+        d={`M${left.x - 1.7} ${left.y - 2.6} L${left.x + 2} ${left.y + 2.4} M${left.x - 1.7} ${left.y - 0.7} L${left.x + 0.5} ${left.y - 2.1} M${left.x - 0.3} ${left.y + 1.1} L${left.x + 2} ${left.y - 0.4}`}
       />
     );
   }
-
   return null;
 }
 
 export function FaceDetails({
-  eyeY,
   faceMark,
   featureScale,
+  geometry,
   mouth,
   mouthStyle,
-  mouthY,
   noseStyle,
 }: FaceDetailsProps) {
   const halfWidth = mouthWidths[mouthStyle] * featureScale;
+  const { x: mouthX, y: mouthY } = geometry.face.mouth;
+  const restingShape = mouth === "open" ? "neutral" : mouth;
 
   return (
     <g className="agent-avatar__face-details">
-      <FaceMarks faceMark={faceMark} eyeY={eyeY} />
-      <Nose eyeY={eyeY} featureScale={featureScale} style={noseStyle} />
-      {mouth === "open" ? (
+      <FaceMarks faceMark={faceMark} geometry={geometry} />
+      <Nose geometry={geometry} style={noseStyle} />
+      <g className="agent-avatar__mouth-rig" data-mouth-shape={mouth}>
+        <path
+          className="agent-avatar__mouth agent-avatar__mouth-rest"
+          d={mouthPath(restingShape, mouthStyle, mouthX, mouthY, halfWidth)}
+        />
         <ellipse
-          className="agent-avatar__mouth agent-avatar__mouth--open"
-          cx="32"
+          className="agent-avatar__mouth agent-avatar__mouth-open"
+          cx={mouthX}
           cy={mouthY}
           rx={Math.max(2.1, halfWidth * 0.48)}
           ry={Math.max(1.4, featureScale * 1.65)}
         />
-      ) : (
         <path
-          className="agent-avatar__mouth"
-          d={mouthPath(mouth, mouthStyle, mouthY, halfWidth)}
+          className="agent-avatar__mouth agent-avatar__mouth-alt"
+          d={mouthPath("smile", mouthStyle, mouthX, mouthY, halfWidth * 0.88)}
         />
-      )}
+      </g>
     </g>
   );
 }

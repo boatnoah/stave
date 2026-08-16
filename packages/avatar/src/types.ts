@@ -12,7 +12,7 @@ export const avatarStatuses = [
 export type AvatarStatus = (typeof avatarStatuses)[number];
 
 export type AvatarMotion = "auto" | "off";
-export type AvatarAppearanceVersion = 1 | 2;
+export type AvatarAppearanceVersion = 1 | 2 | 3;
 
 export type HeadShape =
   | "round"
@@ -22,7 +22,9 @@ export type HeadShape =
   | "heart"
   | "pear"
   | "long"
-  | "diamond";
+  | "diamond"
+  | "bean"
+  | "box";
 export type HairStyle =
   | "bare"
   | "crop"
@@ -51,6 +53,13 @@ export type MouthStyle = "small" | "wide" | "crooked" | "soft";
 export type FaceMark = "none" | "freckles" | "blush" | "mole" | "scar";
 export type AvatarPaletteName = "ink" | "clay" | "cocoa" | "ochre" | "rose" | "umber";
 export type AvatarPersonality = "calm" | "curious" | "focused" | "bright" | "wry";
+export type AvatarActingStyle =
+  | "ponderer"
+  | "mutterer"
+  | "nodder"
+  | "reactive"
+  | "reserved";
+export type AvatarDominantSide = "left" | "right";
 
 export interface AvatarIdentity {
   readonly appearanceVersion: AvatarAppearanceVersion;
@@ -65,6 +74,8 @@ export interface AvatarIdentity {
   readonly faceMark: FaceMark;
   readonly palette: AvatarPaletteName;
   readonly personality: AvatarPersonality;
+  readonly actingStyle: AvatarActingStyle;
+  readonly dominantSide: AvatarDominantSide;
   readonly eyeSpacing: number;
   readonly eyeY: number;
   readonly mouthY: number;

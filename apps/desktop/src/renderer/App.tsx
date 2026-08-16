@@ -20,15 +20,15 @@ const agents: readonly DemoAgent[] = [
     id: "inez",
     name: "Inez",
     role: "Product",
-    seed: "cast-59",
+    seed: "cast-57",
     status: "working",
-    activity: "Untangling the next decision",
+    activity: "Thinking through the next decision",
   },
   {
     id: "arlo",
     name: "Arlo",
     role: "Engineer",
-    seed: "cast-39",
+    seed: "cast-12",
     status: "reviewing",
     activity: "Reading the run history",
   },
@@ -36,7 +36,7 @@ const agents: readonly DemoAgent[] = [
     id: "suri",
     name: "Suri",
     role: "Reviewer",
-    seed: "cast-24",
+    seed: "cast-85",
     status: "reviewing",
     activity: "Checking the proposed diff",
   },
@@ -44,7 +44,7 @@ const agents: readonly DemoAgent[] = [
     id: "milo",
     name: "Milo",
     role: "Research",
-    seed: "cast-13",
+    seed: "cast-4",
     status: "waiting",
     activity: "Waiting on one decision",
   },
@@ -52,7 +52,7 @@ const agents: readonly DemoAgent[] = [
     id: "june",
     name: "June",
     role: "Design",
-    seed: "cast-35",
+    seed: "cast-46",
     status: "idle",
     activity: "Sketching the handoff",
   },
@@ -60,7 +60,7 @@ const agents: readonly DemoAgent[] = [
     id: "theo",
     name: "Theo",
     role: "Quality",
-    seed: "cast-2",
+    seed: "cast-10",
     status: "done",
     activity: "Verification passed",
   },
@@ -68,7 +68,7 @@ const agents: readonly DemoAgent[] = [
     id: "bea",
     name: "Bea",
     role: "Delivery",
-    seed: "cast-10",
+    seed: "cast-24",
     status: "blocked",
     activity: "Flagging a dependency",
   },
@@ -76,21 +76,37 @@ const agents: readonly DemoAgent[] = [
     id: "ren",
     name: "Ren",
     role: "Security",
-    seed: "cast-5",
+    seed: "cast-52",
     status: "queued",
     activity: "Ready for the next review",
+  },
+  {
+    id: "sol",
+    name: "Sol",
+    role: "Operations",
+    seed: "cast-670",
+    status: "failed",
+    activity: "A verification step failed",
+  },
+  {
+    id: "oda",
+    name: "Oda",
+    role: "Platform",
+    seed: "cast-3",
+    status: "working",
+    activity: "Muttering through a migration",
   },
 ];
 
 const stateDescriptions: Record<AvatarStatus, string> = {
-  idle: "A rare blink. Otherwise still.",
-  queued: "Present, but deliberately quiet.",
-  working: "Subtle focus and reading motion.",
-  reviewing: "Eyes scan from left to right.",
-  waiting: "A small upward glance asks for input.",
-  blocked: "One concerned tilt, then rest.",
-  done: "A short nod and smile.",
-  failed: "A brief recoil, then a stable expression.",
+  idle: "A rare breath, blink, or uneven tilt.",
+  queued: "Thought dots gather, then settle.",
+  working: "Scan, mutter, consider, nod, then rest.",
+  reviewing: "A slow scan ends in a quiet hmm.",
+  waiting: "The mouth asks as a question mark appears.",
+  blocked: "A tangled thought and a long sigh.",
+  done: "A deliberate nod, wider smile, and two sparks.",
+  failed: "A small recoil, trembling mouth, and a restrained tear.",
 };
 
 const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
@@ -103,17 +119,17 @@ export function App() {
       <header className="app-header">
         <div className="wordmark">
           <span>Stave</span>
-          <span className="wordmark__context">Avatar study 02</span>
+          <span className="wordmark__context">Avatar study 03</span>
         </div>
         <p className="app-header__note">Procedural SVG · no image assets</p>
       </header>
 
       <section className="intro" aria-labelledby="page-title">
         <p className="eyebrow">Living crew</p>
-        <h1 id="page-title">A crew, not a template.</h1>
+        <h1 id="page-title">Let the silhouette speak first.</h1>
         <p className="intro__copy">
-          Different silhouettes, features, palettes, and temperaments—then motion tied to what
-          each agent is actually doing. No two people distinguished by hairstyle alone.
+          Flat crowns, crooked jaws, sharp diamonds, soft pears, and asymmetric beans—then small
+          acting beats tied to what each agent is actually doing.
         </p>
       </section>
 
@@ -149,7 +165,7 @@ export function App() {
                 name={agent.name}
                 avatarSeed={agent.seed}
                 status={status}
-                size={104}
+                size={112}
               />
               <div className="agent-study__identity">
                 <div>
@@ -159,8 +175,7 @@ export function App() {
                 <span className="state-label">{titleCase(status)}</span>
               </div>
               <p className="agent-study__traits">
-                {titleCase(identity.personality)} · {titleCase(identity.palette)} ·{" "}
-                {identity.headShape}
+                {identity.headShape} · {identity.hairStyle} · {identity.actingStyle}
               </p>
               <p className="agent-study__activity">
                 {stateOverride ? stateDescriptions[status] : agent.activity}
