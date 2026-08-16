@@ -1,91 +1,185 @@
-import type { AccessoryStyle, BrowStyle, EyeStyle } from "../types";
+import type {
+  AccessoryStyle,
+  AvatarPersonality,
+  BrowStyle,
+  EyeStyle,
+} from "../types";
 
 interface EyesProps {
   readonly accessory: AccessoryStyle;
+  readonly browAsymmetry: number;
   readonly browLift: number;
   readonly browStyle: BrowStyle;
   readonly eyeSpacing: number;
   readonly eyeStyle: EyeStyle;
+  readonly eyeY: number;
+  readonly featureScale: number;
+  readonly gazeX: number;
   readonly gazeY: number;
+  readonly personality: AvatarPersonality;
+  readonly pupilSize: number;
 }
 
 const eyeRadii: Record<EyeStyle, { readonly x: number; readonly y: number }> = {
-  round: { x: 3.2, y: 3.2 },
-  soft: { x: 3.4, y: 2.7 },
-  wide: { x: 3.7, y: 3.5 },
+  round: { x: 3.05, y: 3.05 },
+  soft: { x: 3.35, y: 2.6 },
+  wide: { x: 3.65, y: 3.3 },
+  almond: { x: 3.75, y: 2.15 },
+  small: { x: 2.55, y: 2.35 },
 };
 
-function browPath(style: BrowStyle, centerX: number, y: number): string {
-  if (style === "straight") {
-    return `M${centerX - 3.3} ${y} Q${centerX} ${y - 0.25} ${centerX + 3.3} ${y}`;
+const personalityOpenness: Record<AvatarPersonality, number> = {
+  calm: 0.96,
+  curious: 1.06,
+  focused: 0.86,
+  bright: 1.04,
+  wry: 0.82,
+};
+
+function browPath(
+  style: BrowStyle,
+  centerX: number,
+  y: number,
+  side: "left" | "right",
+): string {
+  if (style === "straight" || style === "bold") {
+    return `M${centerX - 3.3} ${y} Q${centerX} ${y - 0.2} ${centerX + 3.3} ${y}`;
   }
 
   if (style === "arched") {
     return `M${centerX - 3.4} ${y + 0.4} Q${centerX} ${y - 2} ${centerX + 3.4} ${y + 0.4}`;
   }
 
+  if (style === "skeptical") {
+    return side === "left"
+      ? `M${centerX - 3.2} ${y + 0.6} Q${centerX} ${y - 0.9} ${centerX + 3.2} ${y - 0.35}`
+      : `M${centerX - 3.2} ${y - 0.15} Q${centerX} ${y - 1.7} ${centerX + 3.2} ${y + 0.5}`;
+  }
+
   return `M${centerX - 3.2} ${y + 0.25} Q${centerX} ${y - 1.15} ${centerX + 3.2} ${y}`;
+}
+
+interface EyeProps {
+  readonly centerX: number;
+  readonly centerY: number;
+  readonly gazeX: number;
+  readonly gazeY: number;
+  readonly pupilSize: number;
+  readonly radii: { readonly x: number; readonly y: number };
+  readonly side: "left" | "right";
+}
+
+function Eye({ centerX, centerY, gazeX, gazeY, pupilSize, radii, side }: EyeProps) {
+  const pupilX = centerX + gazeX;
+  const pupilY = centerY + gazeY;
+
+  return (
+    <g className={`agent-avatar__eye agent-avatar__eye--${side}`}>
+      <ellipse
+        className="agent-avatar__eye-white"
+        cx={centerX}
+        cy={centerY}
+        rx={radii.x}
+        ry={radii.y}
+      />
+      <g className={`agent-avatar__pupil agent-avatar__pupil--${side}`}>
+        <circle cx={pupilX} cy={pupilY} r={pupilSize} />
+        <circle
+          className="agent-avatar__pupil-glint"
+          cx={pupilX - pupilSize * 0.3}
+          cy={pupilY - pupilSize * 0.34}
+          r={Math.max(0.18, pupilSize * 0.2)}
+        />
+      </g>
+    </g>
+  );
 }
 
 export function Eyes({
   accessory,
+  browAsymmetry,
   browLift,
   browStyle,
   eyeSpacing,
   eyeStyle,
+  eyeY,
+  featureScale,
+  gazeX,
   gazeY,
+  personality,
+  pupilSize,
 }: EyesProps) {
-  const radii = eyeRadii[eyeStyle];
+  const baseRadii = eyeRadii[eyeStyle];
+  const radii = {
+    x: baseRadii.x * featureScale,
+    y: baseRadii.y * featureScale * personalityOpenness[personality],
+  };
   const leftX = 32 - eyeSpacing;
   const rightX = 32 + eyeSpacing;
-  const eyeY = 31;
-  const browY = 24.6 + browLift;
+  const browY = eyeY - 6.15 + browLift;
+  const leftBrowY = browY - browAsymmetry * 0.5;
+  const rightBrowY = browY + browAsymmetry * 0.5;
+  const glassWidth = Math.max(8.8, radii.x * 2 + 3.5);
+  const glassHeight = Math.max(8, radii.y * 2 + 3.1);
 
   return (
-    <g>
+    <g className="agent-avatar__eyes-and-brows" data-brow-style={browStyle}>
       <g className="agent-avatar__brows">
-        <path d={browPath(browStyle, leftX, browY)} />
-        <path d={browPath(browStyle, rightX, browY)} />
+        <path d={browPath(browStyle, leftX, leftBrowY, "left")} />
+        <path d={browPath(browStyle, rightX, rightBrowY, "right")} />
       </g>
 
-      <g className="agent-avatar__eye agent-avatar__eye--left">
-        <ellipse
-          className="agent-avatar__eye-white"
-          cx={leftX}
-          cy={eyeY}
-          rx={radii.x}
-          ry={radii.y}
-        />
-      </g>
-      <g className="agent-avatar__eye agent-avatar__eye--right">
-        <ellipse
-          className="agent-avatar__eye-white"
-          cx={rightX}
-          cy={eyeY}
-          rx={radii.x}
-          ry={radii.y}
-        />
-      </g>
+      <Eye
+        centerX={leftX}
+        centerY={eyeY}
+        gazeX={gazeX}
+        gazeY={gazeY}
+        pupilSize={pupilSize}
+        radii={radii}
+        side="left"
+      />
+      <Eye
+        centerX={rightX}
+        centerY={eyeY}
+        gazeX={gazeX}
+        gazeY={gazeY}
+        pupilSize={pupilSize}
+        radii={radii}
+        side="right"
+      />
 
-      <g className="agent-avatar__pupils" transform={`translate(0 ${gazeY})`}>
-        <circle cx={leftX} cy={eyeY} r="1.25" />
-        <circle cx={rightX} cy={eyeY} r="1.25" />
-      </g>
+      {accessory === "round-glasses" ? (
+        <g className="agent-avatar__glasses agent-avatar__glasses--round">
+          <ellipse cx={leftX} cy={eyeY} rx={glassWidth / 2} ry={glassHeight / 2} />
+          <ellipse cx={rightX} cy={eyeY} rx={glassWidth / 2} ry={glassHeight / 2} />
+          <path d={`M${leftX + glassWidth / 2} ${eyeY} Q32 ${eyeY - 1} ${rightX - glassWidth / 2} ${eyeY}`} />
+        </g>
+      ) : null}
 
-      {accessory !== "none" ? (
-        <g className={`agent-avatar__glasses agent-avatar__glasses--${accessory}`}>
-          {accessory === "round-glasses" ? (
-            <>
-              <circle cx={leftX} cy={eyeY} r="5.3" />
-              <circle cx={rightX} cy={eyeY} r="5.3" />
-            </>
-          ) : (
-            <>
-              <rect x={leftX - 5} y={eyeY - 4.6} width="10" height="9.2" rx="2.1" />
-              <rect x={rightX - 5} y={eyeY - 4.6} width="10" height="9.2" rx="2.1" />
-            </>
-          )}
-          <path d={`M${leftX + 5.2} ${eyeY} Q32 ${eyeY - 1} ${rightX - 5.2} ${eyeY}`} />
+      {accessory === "square-glasses" ? (
+        <g className="agent-avatar__glasses agent-avatar__glasses--square">
+          <rect
+            x={leftX - glassWidth / 2}
+            y={eyeY - glassHeight / 2}
+            width={glassWidth}
+            height={glassHeight}
+            rx="2.1"
+          />
+          <rect
+            x={rightX - glassWidth / 2}
+            y={eyeY - glassHeight / 2}
+            width={glassWidth}
+            height={glassHeight}
+            rx="2.1"
+          />
+          <path d={`M${leftX + glassWidth / 2} ${eyeY} Q32 ${eyeY - 1} ${rightX - glassWidth / 2} ${eyeY}`} />
+        </g>
+      ) : null}
+
+      {accessory === "monocle" ? (
+        <g className="agent-avatar__glasses agent-avatar__monocle">
+          <ellipse cx={rightX} cy={eyeY} rx={glassWidth / 2} ry={glassHeight / 2} />
+          <path d={`M${rightX + glassWidth / 2 - 0.6} ${eyeY + 3} Q${rightX + 7} 39 ${rightX + 6} 45`} />
         </g>
       ) : null}
     </g>

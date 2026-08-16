@@ -1,22 +1,90 @@
 import type {
   AccessoryStyle,
+  AvatarAppearanceVersion,
   AvatarIdentity,
+  AvatarPaletteName,
+  AvatarPersonality,
   BrowStyle,
   EyeStyle,
+  FaceMark,
   HairStyle,
   HeadShape,
+  MouthStyle,
+  NoseStyle,
 } from "../types";
 
-const headShapes: readonly HeadShape[] = ["round", "oval", "soft-square"];
-const hairStyles: readonly HairStyle[] = ["crop", "wave", "bob", "tuft", "cap"];
-const eyeStyles: readonly EyeStyle[] = ["round", "soft", "wide"];
-const browStyles: readonly BrowStyle[] = ["soft", "straight", "arched"];
-const accessories: readonly AccessoryStyle[] = [
+const legacyHeadShapes: readonly HeadShape[] = ["round", "oval", "soft-square"];
+const legacyHairStyles: readonly HairStyle[] = ["crop", "wave", "bob", "tuft", "cap"];
+const legacyEyeStyles: readonly EyeStyle[] = ["round", "soft", "wide"];
+const legacyBrowStyles: readonly BrowStyle[] = ["soft", "straight", "arched"];
+const legacyAccessories: readonly AccessoryStyle[] = [
   "none",
   "none",
   "none",
   "round-glasses",
   "square-glasses",
+];
+
+const headShapes: readonly HeadShape[] = [
+  "round",
+  "oval",
+  "soft-square",
+  "wide",
+  "heart",
+  "pear",
+  "long",
+  "diamond",
+];
+const hairStyles: readonly HairStyle[] = [
+  "bare",
+  "crop",
+  "wave",
+  "bob",
+  "curls",
+  "buzz",
+  "side-sweep",
+  "bun",
+  "locs",
+  "quiff",
+  "shag",
+  "double-puff",
+  "side-braid",
+];
+const eyeStyles: readonly EyeStyle[] = ["round", "soft", "wide", "almond", "small"];
+const browStyles: readonly BrowStyle[] = [
+  "soft",
+  "straight",
+  "arched",
+  "bold",
+  "skeptical",
+];
+const accessories: readonly AccessoryStyle[] = [
+  "none",
+  "none",
+  "none",
+  "none",
+  "round-glasses",
+  "square-glasses",
+  "monocle",
+];
+const noseStyles: readonly NoseStyle[] = ["curve", "button", "wedge", "dash"];
+const mouthStyles: readonly MouthStyle[] = ["small", "wide", "crooked", "soft"];
+const faceMarks: readonly FaceMark[] = [
+  "none",
+  "none",
+  "none",
+  "freckles",
+  "blush",
+  "mole",
+  "scar",
+];
+const palettes: readonly AvatarPaletteName[] = ["ink", "clay", "cocoa", "ochre", "rose", "umber"];
+const personalities: readonly AvatarPersonality[] = [
+  "calm",
+  "curious",
+  "focused",
+  "bright",
+  "wry",
 ];
 
 function hashSeed(value: string): number {
@@ -55,26 +123,84 @@ function round(value: number, places = 2): number {
   return Math.round(value * factor) / factor;
 }
 
-export function createAvatarIdentity(
-  avatarSeed: string,
-  appearanceVersion: 1 = 1,
-): AvatarIdentity {
-  const normalizedSeed = `${appearanceVersion}:${avatarSeed.trim().toLowerCase()}`;
-  const seedHash = hashSeed(normalizedSeed);
+function randomFor(seedHash: number, channel: string): () => number {
+  return createRandom(hashSeed(`${seedHash}:${channel}`));
+}
+
+function pickFor<T>(seedHash: number, channel: string, values: readonly T[]): T {
+  return pick(values, randomFor(seedHash, channel));
+}
+
+function betweenFor(seedHash: number, channel: string, minimum: number, maximum: number): number {
+  return between(randomFor(seedHash, channel), minimum, maximum);
+}
+
+function createLegacyIdentity(avatarSeed: string): AvatarIdentity {
+  const seedHash = hashSeed(`1:${avatarSeed.trim().toLowerCase()}`);
   const random = createRandom(seedHash);
 
   return {
-    appearanceVersion,
+    appearanceVersion: 1,
     seedHash,
-    headShape: pick(headShapes, random),
-    hairStyle: pick(hairStyles, random),
-    eyeStyle: pick(eyeStyles, random),
-    browStyle: pick(browStyles, random),
-    accessory: pick(accessories, random),
+    headShape: pick(legacyHeadShapes, random),
+    hairStyle: pick(legacyHairStyles, random),
+    eyeStyle: pick(legacyEyeStyles, random),
+    browStyle: pick(legacyBrowStyles, random),
+    accessory: pick(legacyAccessories, random),
+    noseStyle: "curve",
+    mouthStyle: "soft",
+    faceMark: "none",
+    palette: "ink",
+    personality: "calm",
     eyeSpacing: round(between(random, 8.4, 10.8)),
+    eyeY: 31,
+    mouthY: 43.2,
+    pupilSize: 1.25,
+    featureScale: 1,
     faceOffsetX: round(between(random, -0.8, 0.8)),
     lineTilt: round(between(random, -0.75, 0.75)),
+    restingTilt: 0,
+    motionIntensity: 1,
     blinkDurationMs: Math.round(between(random, 7_400, 12_800)),
     motionDelayMs: -Math.round(between(random, 400, 5_800)),
   };
+}
+
+function createExpandedIdentity(avatarSeed: string): AvatarIdentity {
+  const seedHash = hashSeed(`2:${avatarSeed.trim().toLowerCase()}`);
+
+  return {
+    appearanceVersion: 2,
+    seedHash,
+    personality: pickFor(seedHash, "personality", personalities),
+    headShape: pickFor(seedHash, "head", headShapes),
+    hairStyle: pickFor(seedHash, "hair", hairStyles),
+    eyeStyle: pickFor(seedHash, "eyes", eyeStyles),
+    browStyle: pickFor(seedHash, "brows", browStyles),
+    accessory: pickFor(seedHash, "accessory", accessories),
+    noseStyle: pickFor(seedHash, "nose", noseStyles),
+    mouthStyle: pickFor(seedHash, "mouth", mouthStyles),
+    faceMark: pickFor(seedHash, "face-mark", faceMarks),
+    palette: pickFor(seedHash, "palette", palettes),
+    eyeSpacing: round(betweenFor(seedHash, "eye-spacing", 7.7, 11.15)),
+    eyeY: round(betweenFor(seedHash, "eye-y", 29.8, 32.1)),
+    mouthY: round(betweenFor(seedHash, "mouth-y", 42.2, 45.2)),
+    pupilSize: round(betweenFor(seedHash, "pupil-size", 0.92, 1.34)),
+    featureScale: round(betweenFor(seedHash, "feature-scale", 0.92, 1.08)),
+    faceOffsetX: round(betweenFor(seedHash, "face-offset", -1.15, 1.15)),
+    lineTilt: round(betweenFor(seedHash, "line-tilt", -1.1, 1.1)),
+    restingTilt: round(betweenFor(seedHash, "resting-tilt", -0.65, 0.65)),
+    motionIntensity: round(betweenFor(seedHash, "motion-intensity", 0.78, 1.22)),
+    blinkDurationMs: Math.round(betweenFor(seedHash, "blink-duration", 6_800, 13_600)),
+    motionDelayMs: -Math.round(betweenFor(seedHash, "motion-delay", 400, 7_200)),
+  };
+}
+
+export function createAvatarIdentity(
+  avatarSeed: string,
+  appearanceVersion: AvatarAppearanceVersion = 2,
+): AvatarIdentity {
+  return appearanceVersion === 1
+    ? createLegacyIdentity(avatarSeed)
+    : createExpandedIdentity(avatarSeed);
 }

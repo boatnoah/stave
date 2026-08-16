@@ -1,4 +1,9 @@
-import { AgentAvatar, avatarStatuses, type AvatarStatus } from "@stave/avatar";
+import {
+  AgentAvatar,
+  avatarStatuses,
+  createAvatarIdentity,
+  type AvatarStatus,
+} from "@stave/avatar";
 import { useState } from "react";
 
 interface DemoAgent {
@@ -12,26 +17,26 @@ interface DemoAgent {
 
 const agents: readonly DemoAgent[] = [
   {
-    id: "nora",
-    name: "Nora",
+    id: "inez",
+    name: "Inez",
     role: "Product",
-    seed: "nora-product-v1",
-    status: "idle",
-    activity: "Shaping the next task",
+    seed: "cast-59",
+    status: "working",
+    activity: "Untangling the next decision",
   },
   {
     id: "arlo",
     name: "Arlo",
     role: "Engineer",
-    seed: "arlo-engineer-v1",
-    status: "working",
-    activity: "Reading the event stream",
+    seed: "cast-39",
+    status: "reviewing",
+    activity: "Reading the run history",
   },
   {
     id: "suri",
     name: "Suri",
     role: "Reviewer",
-    seed: "suri-reviewer-v1",
+    seed: "cast-24",
     status: "reviewing",
     activity: "Checking the proposed diff",
   },
@@ -39,9 +44,41 @@ const agents: readonly DemoAgent[] = [
     id: "milo",
     name: "Milo",
     role: "Research",
-    seed: "milo-research-v1",
+    seed: "cast-13",
     status: "waiting",
     activity: "Waiting on one decision",
+  },
+  {
+    id: "june",
+    name: "June",
+    role: "Design",
+    seed: "cast-35",
+    status: "idle",
+    activity: "Sketching the handoff",
+  },
+  {
+    id: "theo",
+    name: "Theo",
+    role: "Quality",
+    seed: "cast-2",
+    status: "done",
+    activity: "Verification passed",
+  },
+  {
+    id: "bea",
+    name: "Bea",
+    role: "Delivery",
+    seed: "cast-10",
+    status: "blocked",
+    activity: "Flagging a dependency",
+  },
+  {
+    id: "ren",
+    name: "Ren",
+    role: "Security",
+    seed: "cast-5",
+    status: "queued",
+    activity: "Ready for the next review",
   },
 ];
 
@@ -66,17 +103,17 @@ export function App() {
       <header className="app-header">
         <div className="wordmark">
           <span>Stave</span>
-          <span className="wordmark__context">Avatar study 01</span>
+          <span className="wordmark__context">Avatar study 02</span>
         </div>
         <p className="app-header__note">Procedural SVG · no image assets</p>
       </header>
 
       <section className="intro" aria-labelledby="page-title">
         <p className="eyebrow">Living crew</p>
-        <h1 id="page-title">Agents should feel present, not busy.</h1>
+        <h1 id="page-title">A crew, not a template.</h1>
         <p className="intro__copy">
-          Stable hand-drawn identities with motion tied to real execution state. At board size,
-          the avatar replaces another spinner—not another piece of chrome.
+          Different silhouettes, features, palettes, and temperaments—then motion tied to what
+          each agent is actually doing. No two people distinguished by hairstyle alone.
         </p>
       </section>
 
@@ -103,6 +140,7 @@ export function App() {
       <section className="agent-grid" aria-label="Agent avatar studies">
         {agents.map((agent) => {
           const status = stateOverride ?? agent.status;
+          const identity = createAvatarIdentity(agent.seed);
 
           return (
             <article className="agent-study" key={agent.id}>
@@ -111,7 +149,7 @@ export function App() {
                 name={agent.name}
                 avatarSeed={agent.seed}
                 status={status}
-                size={112}
+                size={104}
               />
               <div className="agent-study__identity">
                 <div>
@@ -120,6 +158,10 @@ export function App() {
                 </div>
                 <span className="state-label">{titleCase(status)}</span>
               </div>
+              <p className="agent-study__traits">
+                {titleCase(identity.personality)} · {titleCase(identity.palette)} ·{" "}
+                {identity.headShape}
+              </p>
               <p className="agent-study__activity">
                 {stateOverride ? stateDescriptions[status] : agent.activity}
               </p>
@@ -138,12 +180,13 @@ export function App() {
         </div>
 
         <div className="mini-board">
-          {agents.slice(0, 3).map((agent, index) => {
+          {agents.slice(0, 4).map((agent, index) => {
             const status = stateOverride ?? agent.status;
             const tasks = [
               "Define launch success metrics",
               "Stream Codex run events",
               "Prove retry behavior",
+              "Review the permissions boundary",
             ] as const;
 
             return (
