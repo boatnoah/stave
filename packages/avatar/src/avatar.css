@@ -84,6 +84,7 @@
 .agent-avatar__cap-line,
 .agent-avatar__cap-brim,
 .agent-avatar__eye-white,
+.agent-avatar__eye-lid,
 .agent-avatar__brows path,
 .agent-avatar__glasses circle,
 .agent-avatar__glasses ellipse,
@@ -173,6 +174,18 @@
 .agent-avatar__eye-white {
   fill: var(--avatar-eye);
   stroke-width: 1.15;
+}
+
+.agent-avatar__eye-lid {
+  fill: none;
+  stroke: var(--avatar-ink);
+  stroke-linecap: round;
+  stroke-width: 1.35;
+}
+
+.agent-avatar__eyes-and-brows[data-eye-style="sleepy"] .agent-avatar__eye-lid,
+.agent-avatar__eyes-and-brows[data-eye-style="hooded"] .agent-avatar__eye-lid {
+  stroke-width: 1.55;
 }
 
 .agent-avatar__pupil {

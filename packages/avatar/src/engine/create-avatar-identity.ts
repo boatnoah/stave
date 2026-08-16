@@ -53,7 +53,18 @@ const hairStyles: readonly HairStyle[] = [
   "double-puff",
   "side-braid",
 ];
-const eyeStyles: readonly EyeStyle[] = ["round", "soft", "wide", "almond", "small"];
+const version2EyeStyles: readonly EyeStyle[] = ["round", "soft", "wide", "almond", "small"];
+const version3EyeStyles = version2EyeStyles;
+const expressiveEyeStyles: readonly EyeStyle[] = [
+  "bead",
+  "button",
+  "almond",
+  "sleepy",
+  "tall",
+  "hooded",
+  "uneven",
+  "wide",
+];
 const browStyles: readonly BrowStyle[] = [
   "soft",
   "straight",
@@ -188,7 +199,7 @@ function createVersion2Identity(avatarSeed: string): AvatarIdentity {
     personality: pickFor(seedHash, "personality", personalities),
     headShape: pickFor(seedHash, "head", headShapes),
     hairStyle: pickFor(seedHash, "hair", hairStyles),
-    eyeStyle: pickFor(seedHash, "eyes", eyeStyles),
+    eyeStyle: pickFor(seedHash, "eyes", version2EyeStyles),
     browStyle: pickFor(seedHash, "brows", browStyles),
     accessory: pickFor(seedHash, "accessory", accessories),
     noseStyle: pickFor(seedHash, "nose", noseStyles),
@@ -211,18 +222,22 @@ function createVersion2Identity(avatarSeed: string): AvatarIdentity {
   };
 }
 
-function createExpressiveIdentity(avatarSeed: string): AvatarIdentity {
-  const seedHash = hashSeed(`3:${avatarSeed.trim().toLowerCase()}`);
+function createModernIdentity(
+  avatarSeed: string,
+  appearanceVersion: 3 | 4,
+  availableEyeStyles: readonly EyeStyle[],
+): AvatarIdentity {
+  const seedHash = hashSeed(`${appearanceVersion}:${avatarSeed.trim().toLowerCase()}`);
 
   return {
-    appearanceVersion: 3,
+    appearanceVersion,
     seedHash,
     personality: pickFor(seedHash, "personality", personalities),
     actingStyle: pickFor(seedHash, "acting-style", actingStyles),
     dominantSide: pickFor(seedHash, "dominant-side", dominantSides),
     headShape: pickFor(seedHash, "head", expressiveHeadShapes),
     hairStyle: pickFor(seedHash, "hair", hairStyles),
-    eyeStyle: pickFor(seedHash, "eyes", eyeStyles),
+    eyeStyle: pickFor(seedHash, "eyes", availableEyeStyles),
     browStyle: pickFor(seedHash, "brows", browStyles),
     accessory: pickFor(seedHash, "accessory", accessories),
     noseStyle: pickFor(seedHash, "nose", noseStyles),
@@ -245,9 +260,10 @@ function createExpressiveIdentity(avatarSeed: string): AvatarIdentity {
 
 export function createAvatarIdentity(
   avatarSeed: string,
-  appearanceVersion: AvatarAppearanceVersion = 3,
+  appearanceVersion: AvatarAppearanceVersion = 4,
 ): AvatarIdentity {
   if (appearanceVersion === 1) return createLegacyIdentity(avatarSeed);
   if (appearanceVersion === 2) return createVersion2Identity(avatarSeed);
-  return createExpressiveIdentity(avatarSeed);
+  if (appearanceVersion === 3) return createModernIdentity(avatarSeed, 3, version3EyeStyles);
+  return createModernIdentity(avatarSeed, 4, expressiveEyeStyles);
 }

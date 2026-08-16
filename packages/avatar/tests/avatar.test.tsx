@@ -15,14 +15,15 @@ describe("createAvatarIdentity", () => {
 
     expect(second).toEqual(first);
     expect(first).toMatchObject({
-      appearanceVersion: 3,
-      headShape: "pear",
+      appearanceVersion: 4,
+      headShape: "long",
       hairStyle: "buzz",
-      browStyle: "straight",
-      mouthStyle: "crooked",
-      palette: "ochre",
-      personality: "curious",
-      actingStyle: "mutterer",
+      eyeStyle: "wide",
+      browStyle: "soft",
+      mouthStyle: "wide",
+      palette: "umber",
+      personality: "focused",
+      actingStyle: "ponderer",
       dominantSide: "left",
     });
   });
@@ -49,6 +50,19 @@ describe("createAvatarIdentity", () => {
     });
   });
 
+  it("keeps version three identities available for saved agents", () => {
+    const identity = createAvatarIdentity("arlo-engineer", 3);
+
+    expect(identity).toMatchObject({
+      appearanceVersion: 3,
+      headShape: "pear",
+      hairStyle: "buzz",
+      eyeStyle: "round",
+      palette: "ochre",
+      personality: "curious",
+    });
+  });
+
   it("uses the full appearance vocabulary across a large crew", () => {
     const identities = Array.from({ length: 500 }, (_, index) =>
       createAvatarIdentity(`agent-${index}`),
@@ -57,6 +71,7 @@ describe("createAvatarIdentity", () => {
     expect(new Set(identities.map((identity) => identity.seedHash)).size).toBe(500);
     expect(new Set(identities.map((identity) => identity.headShape)).size).toBe(10);
     expect(new Set(identities.map((identity) => identity.hairStyle)).size).toBe(13);
+    expect(new Set(identities.map((identity) => identity.eyeStyle)).size).toBe(8);
     expect(new Set(identities.map((identity) => identity.browStyle)).size).toBe(5);
     expect(new Set(identities.map((identity) => identity.palette)).size).toBe(6);
     expect(new Set(identities.map((identity) => identity.personality)).size).toBe(5);
@@ -154,7 +169,7 @@ describe("AgentAvatar", () => {
       />,
     );
 
-    const eyeGroups = markup.match(/<g class="agent-avatar__eye agent-avatar__eye--(?:left|right)">.*?<\/g><\/g>/g);
+    const eyeGroups = markup.match(/<g class="agent-avatar__eye agent-avatar__eye--(?:left|right)"[^>]*>.*?<\/g><\/g>/g);
 
     expect(eyeGroups).toHaveLength(2);
     expect(eyeGroups?.every((group) => group.includes("agent-avatar__pupil"))).toBe(true);
@@ -165,7 +180,7 @@ describe("AgentAvatar", () => {
       <AgentAvatar
         agentId="inez"
         name="Inez"
-        avatarSeed="cast-57"
+        avatarSeed="eye-42"
         status="working"
         size={112}
       />,
@@ -184,5 +199,34 @@ describe("AgentAvatar", () => {
     expect(thinking).toContain("agent-avatar__thought-cloud");
     expect(thinking).toContain("agent-avatar__mouth-rig");
     expect(failed).toContain("agent-avatar__tear-drop");
+  });
+
+  it.each([
+    ["bead", "eye-7"],
+    ["button", "eye-66"],
+    ["almond", "eye-316"],
+    ["sleepy", "eye-363"],
+    ["tall", "eye-292"],
+    ["hooded", "eye-263"],
+    ["uneven", "eye-302"],
+    ["wide", "eye-62"],
+  ] as const)("renders the %s eye construction", (eyeStyle, avatarSeed) => {
+    const markup = renderToStaticMarkup(
+      <AgentAvatar
+        agentId={eyeStyle}
+        name={eyeStyle}
+        avatarSeed={avatarSeed}
+        status="idle"
+        size={112}
+      />,
+    );
+
+    expect(markup).toContain(`data-eye-style="${eyeStyle}"`);
+    expect(markup.match(/data-eye-family=/g)).toHaveLength(2);
+
+    if (eyeStyle === "bead") expect(markup).not.toContain("agent-avatar__eye-white");
+    if (eyeStyle === "sleepy" || eyeStyle === "hooded") {
+      expect(markup).toContain("agent-avatar__eye-lid");
+    }
   });
 });

@@ -46,7 +46,7 @@ export const AgentAvatar = memo(function AgentAvatar({
   agentId,
   name,
   avatarSeed,
-  appearanceVersion = 3,
+  appearanceVersion = 4,
   status,
   size = 48,
   motion = "auto",

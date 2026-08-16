@@ -20,7 +20,7 @@ const agents: readonly DemoAgent[] = [
     id: "inez",
     name: "Inez",
     role: "Product",
-    seed: "cast-57",
+    seed: "eye-7",
     status: "working",
     activity: "Thinking through the next decision",
   },
@@ -28,7 +28,7 @@ const agents: readonly DemoAgent[] = [
     id: "arlo",
     name: "Arlo",
     role: "Engineer",
-    seed: "cast-12",
+    seed: "eye-66",
     status: "reviewing",
     activity: "Reading the run history",
   },
@@ -36,7 +36,7 @@ const agents: readonly DemoAgent[] = [
     id: "suri",
     name: "Suri",
     role: "Reviewer",
-    seed: "cast-85",
+    seed: "eye-316",
     status: "reviewing",
     activity: "Checking the proposed diff",
   },
@@ -44,7 +44,7 @@ const agents: readonly DemoAgent[] = [
     id: "milo",
     name: "Milo",
     role: "Research",
-    seed: "cast-4",
+    seed: "eye-363",
     status: "waiting",
     activity: "Waiting on one decision",
   },
@@ -52,7 +52,7 @@ const agents: readonly DemoAgent[] = [
     id: "june",
     name: "June",
     role: "Design",
-    seed: "cast-46",
+    seed: "eye-292",
     status: "idle",
     activity: "Sketching the handoff",
   },
@@ -60,7 +60,7 @@ const agents: readonly DemoAgent[] = [
     id: "theo",
     name: "Theo",
     role: "Quality",
-    seed: "cast-10",
+    seed: "eye-263",
     status: "done",
     activity: "Verification passed",
   },
@@ -68,7 +68,7 @@ const agents: readonly DemoAgent[] = [
     id: "bea",
     name: "Bea",
     role: "Delivery",
-    seed: "cast-24",
+    seed: "eye-302",
     status: "blocked",
     activity: "Flagging a dependency",
   },
@@ -76,7 +76,7 @@ const agents: readonly DemoAgent[] = [
     id: "ren",
     name: "Ren",
     role: "Security",
-    seed: "cast-52",
+    seed: "eye-62",
     status: "queued",
     activity: "Ready for the next review",
   },
@@ -84,7 +84,7 @@ const agents: readonly DemoAgent[] = [
     id: "sol",
     name: "Sol",
     role: "Operations",
-    seed: "cast-670",
+    seed: "eye-148",
     status: "failed",
     activity: "A verification step failed",
   },
@@ -92,7 +92,7 @@ const agents: readonly DemoAgent[] = [
     id: "oda",
     name: "Oda",
     role: "Platform",
-    seed: "cast-3",
+    seed: "eye-205",
     status: "working",
     activity: "Muttering through a migration",
   },
@@ -119,17 +119,17 @@ export function App() {
       <header className="app-header">
         <div className="wordmark">
           <span>Stave</span>
-          <span className="wordmark__context">Avatar study 03</span>
+          <span className="wordmark__context">Avatar study 04</span>
         </div>
         <p className="app-header__note">Procedural SVG · no image assets</p>
       </header>
 
       <section className="intro" aria-labelledby="page-title">
         <p className="eyebrow">Living crew</p>
-        <h1 id="page-title">Let the silhouette speak first.</h1>
+        <h1 id="page-title">The eyes should not share a mold.</h1>
         <p className="intro__copy">
-          Flat crowns, crooked jaws, sharp diamonds, soft pears, and asymmetric beans—then small
-          acting beats tied to what each agent is actually doing.
+          Ink beads, open buttons, pointed almonds, heavy lids, tall ovals, sleepy arcs, and one
+          deliberately uneven pair—all sharing a coherent gaze.
         </p>
       </section>
 
@@ -175,7 +175,7 @@ export function App() {
                 <span className="state-label">{titleCase(status)}</span>
               </div>
               <p className="agent-study__traits">
-                {identity.headShape} · {identity.hairStyle} · {identity.actingStyle}
+                {identity.headShape} · {identity.eyeStyle} eyes · {identity.hairStyle}
               </p>
               <p className="agent-study__activity">
                 {stateOverride ? stateDescriptions[status] : agent.activity}

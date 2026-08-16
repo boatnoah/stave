@@ -12,7 +12,7 @@ export const avatarStatuses = [
 export type AvatarStatus = (typeof avatarStatuses)[number];
 
 export type AvatarMotion = "auto" | "off";
-export type AvatarAppearanceVersion = 1 | 2 | 3;
+export type AvatarAppearanceVersion = 1 | 2 | 3 | 4;
 
 export type HeadShape =
   | "round"
@@ -41,7 +41,18 @@ export type HairStyle =
   | "shag"
   | "double-puff"
   | "side-braid";
-export type EyeStyle = "round" | "soft" | "wide" | "almond" | "small";
+export type EyeStyle =
+  | "round"
+  | "soft"
+  | "wide"
+  | "almond"
+  | "small"
+  | "bead"
+  | "button"
+  | "sleepy"
+  | "tall"
+  | "hooded"
+  | "uneven";
 export type BrowStyle = "soft" | "straight" | "arched" | "bold" | "skeptical";
 export type AccessoryStyle =
   | "none"
