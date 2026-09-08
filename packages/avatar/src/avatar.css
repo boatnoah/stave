@@ -171,6 +171,10 @@
   transform-origin: center;
 }
 
+.agent-avatar[data-appearance-version="4"] .agent-avatar__eye {
+  transform-origin: center 58%;
+}
+
 .agent-avatar__eye-white {
   fill: var(--avatar-eye);
   stroke-width: 1.15;
@@ -183,8 +187,17 @@
   stroke-width: 1.35;
 }
 
+.agent-avatar__eye-lid-cover {
+  fill: var(--avatar-face);
+  stroke: none;
+}
+
 .agent-avatar__eyes-and-brows[data-eye-style="sleepy"] .agent-avatar__eye-lid,
 .agent-avatar__eyes-and-brows[data-eye-style="hooded"] .agent-avatar__eye-lid {
+  stroke-width: 1.55;
+}
+
+.agent-avatar[data-detail="compact"] .agent-avatar__eye-lid {
   stroke-width: 1.55;
 }
 

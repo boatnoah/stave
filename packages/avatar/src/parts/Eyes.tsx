@@ -13,6 +13,7 @@ interface EyesProps {
   readonly browStyle: BrowStyle;
   readonly eyeStyle: EyeStyle;
   readonly featureScale: number;
+  readonly friendlyLids: boolean;
   readonly gazeX: number;
   readonly gazeY: number;
   readonly geometry: AvatarGeometry;
@@ -50,6 +51,60 @@ const personalityOpenness: Record<AvatarPersonality, number> = {
   wry: 0.82,
 };
 
+const friendlyPersonalityOpenness: Record<AvatarPersonality, number> = {
+  calm: 0.96,
+  curious: 1.02,
+  focused: 0.86,
+  bright: 1,
+  wry: 0.82,
+};
+
+const friendlyOpenness: Record<EyeStyle, number> = {
+  round: 0.97,
+  soft: 0.97,
+  wide: 0.92,
+  almond: 0.98,
+  small: 0.97,
+  bead: 1,
+  button: 0.94,
+  sleepy: 0.97,
+  tall: 0.9,
+  hooded: 0.95,
+  uneven: 0.94,
+};
+
+const friendlyPupilBoost: Record<EyeStyle, number> = {
+  round: 1.04,
+  soft: 1.04,
+  wide: 1.16,
+  almond: 1.06,
+  small: 1.04,
+  bead: 1,
+  button: 1,
+  sleepy: 1.08,
+  tall: 1.15,
+  hooded: 1.08,
+  uneven: 1.09,
+};
+
+const lidAperture: Record<EyeStyle, number> = {
+  round: 0.58,
+  soft: 0.55,
+  wide: 0.42,
+  almond: 0.58,
+  small: 0.55,
+  bead: 0.78,
+  button: 0.45,
+  sleepy: 0.7,
+  tall: 0.38,
+  hooded: 0.66,
+  uneven: 0.46,
+};
+
+function getLidAperture(style: EyeStyle, side: "left" | "right"): number {
+  return style === "uneven" && side === "right" ? 0.55 : lidAperture[style];
+}
+
 function browPath(
   style: BrowStyle,
   centerX: number,
@@ -75,19 +130,21 @@ function eyeDimensions(
   side: "left" | "right",
   featureScale: number,
   openness: number,
+  friendly: boolean,
 ): { readonly radiusX: number; readonly radiusY: number; readonly pupilScale: number } {
   const base = eyeMetrics[style];
   const unevenScale =
     style === "uneven"
       ? side === "left"
-        ? { x: 1.03, y: 1.03, pupil: 1.02 }
-        : { x: 0.88, y: 0.82, pupil: 0.92 }
+        ? { x: 1.01, y: 1.01, pupil: 1.01 }
+        : { x: 0.92, y: 0.9, pupil: 0.96 }
       : { x: 1, y: 1, pupil: 1 };
 
   return {
     radiusX: base.radiusX * featureScale * unevenScale.x,
     radiusY: base.radiusY * featureScale * openness * unevenScale.y,
-    pupilScale: base.pupilScale * unevenScale.pupil,
+    pupilScale:
+      base.pupilScale * unevenScale.pupil * (friendly ? friendlyPupilBoost[style] : 1),
   };
 }
 
@@ -114,31 +171,19 @@ function EyeShape({ centerX, centerY, radiusX, radiusY, side, style }: EyeShapeP
 
   if (style === "sleepy") {
     return (
-      <g className="agent-avatar__eye-shell agent-avatar__eye-shell--sleepy">
-        <path
-          className="agent-avatar__eye-white"
-          d={`M${centerX - radiusX} ${centerY + 0.2} Q${centerX} ${centerY - radiusY} ${centerX + radiusX} ${centerY + 0.15} Q${centerX} ${centerY + radiusY * 0.72} ${centerX - radiusX} ${centerY + 0.2} Z`}
-        />
-        <path
-          className="agent-avatar__eye-lid"
-          d={`M${centerX - radiusX} ${centerY - 0.05} Q${centerX} ${centerY - radiusY * 1.2} ${centerX + radiusX} ${centerY + 0.05}`}
-        />
-      </g>
+      <path
+        className="agent-avatar__eye-white agent-avatar__eye-white--sleepy"
+        d={`M${centerX - radiusX} ${centerY + 0.2} Q${centerX} ${centerY - radiusY} ${centerX + radiusX} ${centerY + 0.15} Q${centerX} ${centerY + radiusY * 0.72} ${centerX - radiusX} ${centerY + 0.2} Z`}
+      />
     );
   }
 
   if (style === "hooded") {
     return (
-      <g className="agent-avatar__eye-shell agent-avatar__eye-shell--hooded">
-        <path
-          className="agent-avatar__eye-white"
-          d={`M${centerX - radiusX} ${centerY + 0.4} Q${centerX} ${centerY - radiusY * 0.92} ${centerX + radiusX} ${centerY + 0.15} Q${centerX} ${centerY + radiusY} ${centerX - radiusX} ${centerY + 0.4} Z`}
-        />
-        <path
-          className="agent-avatar__eye-lid"
-          d={`M${centerX - radiusX - 0.2} ${centerY - 0.2} Q${centerX - 0.2} ${centerY - radiusY * 1.3} ${centerX + radiusX + 0.2} ${centerY - 0.05}`}
-        />
-      </g>
+      <path
+        className="agent-avatar__eye-white agent-avatar__eye-white--hooded"
+        d={`M${centerX - radiusX} ${centerY + 0.4} Q${centerX} ${centerY - radiusY * 0.92} ${centerX + radiusX} ${centerY + 0.15} Q${centerX} ${centerY + radiusY} ${centerX - radiusX} ${centerY + 0.4} Z`}
+      />
     );
   }
 
@@ -153,7 +198,38 @@ function EyeShape({ centerX, centerY, radiusX, radiusY, side, style }: EyeShapeP
   );
 }
 
+function FriendlyLid({ centerX, centerY, radiusX, radiusY, side, style }: EyeShapeProps) {
+  const aperture = getLidAperture(style, side);
+  const horizontalInset = style === "bead" ? radiusX * 0.2 : 0;
+  const leftX = centerX - radiusX + horizontalInset - 0.18;
+  const rightX = centerX + radiusX - horizontalInset + 0.18;
+  const coverLeftX = leftX - 0.7;
+  const coverRightX = rightX + 0.7;
+  const sideDrift = side === "left" ? -0.08 : 0.08;
+  const leftY = centerY - radiusY * 0.04 + sideDrift;
+  const rightY = centerY - radiusY * 0.04 - sideDrift;
+  const controlX = centerX + (side === "left" ? -0.14 : 0.14);
+  const controlY = centerY - radiusY * aperture;
+  const coverY = centerY - radiusY - 1.4;
+
+  return (
+    <g
+      className={`agent-avatar__eye-lid-layer agent-avatar__eye-lid-layer--${style}`}
+    >
+      <path
+        className="agent-avatar__eye-lid-cover"
+        d={`M${leftX} ${leftY} L${coverLeftX} ${coverY} L${coverRightX} ${coverY} L${rightX} ${rightY} Q${controlX} ${controlY} ${leftX} ${leftY} Z`}
+      />
+      <path
+        className="agent-avatar__eye-lid"
+        d={`M${leftX} ${leftY} Q${controlX} ${controlY} ${rightX} ${rightY}`}
+      />
+    </g>
+  );
+}
+
 interface EyeProps extends EyeShapeProps {
+  readonly friendlyLids: boolean;
   readonly gazeX: number;
   readonly gazeY: number;
   readonly pupilScale: number;
@@ -163,6 +239,7 @@ interface EyeProps extends EyeShapeProps {
 function Eye({
   centerX,
   centerY,
+  friendlyLids,
   gazeX,
   gazeY,
   pupilScale,
@@ -175,7 +252,10 @@ function Eye({
   const metrics = eyeMetrics[style];
   const renderedPupilSize = pupilSize * pupilScale;
   const pupilX = centerX + gazeX * metrics.gazeX;
-  const pupilY = centerY + gazeY * metrics.gazeY;
+  const desiredPupilY = centerY + gazeY * metrics.gazeY;
+  const minimumPupilY =
+    centerY - radiusY * getLidAperture(style, side) + renderedPupilSize * 0.35;
+  const pupilY = friendlyLids ? Math.max(desiredPupilY, minimumPupilY) : desiredPupilY;
 
   return (
     <g
@@ -201,6 +281,16 @@ function Eye({
           />
         )}
       </g>
+      {friendlyLids ? (
+        <FriendlyLid
+          centerX={centerX}
+          centerY={centerY}
+          radiusX={radiusX}
+          radiusY={radiusY}
+          side={side}
+          style={style}
+        />
+      ) : null}
     </g>
   );
 }
@@ -212,26 +302,46 @@ export function Eyes({
   browStyle,
   eyeStyle,
   featureScale,
+  friendlyLids,
   gazeX,
   gazeY,
   geometry,
   personality,
   pupilSize,
 }: EyesProps) {
-  const openness = personalityOpenness[personality];
-  const leftDimensions = eyeDimensions(eyeStyle, "left", featureScale, openness);
-  const rightDimensions = eyeDimensions(eyeStyle, "right", featureScale, openness);
+  const personalityScale = friendlyLids
+    ? friendlyPersonalityOpenness[personality]
+    : personalityOpenness[personality];
+  const openness = personalityScale * (friendlyLids ? friendlyOpenness[eyeStyle] : 1);
+  const leftDimensions = eyeDimensions(
+    eyeStyle,
+    "left",
+    featureScale,
+    openness,
+    friendlyLids,
+  );
+  const rightDimensions = eyeDimensions(
+    eyeStyle,
+    "right",
+    featureScale,
+    openness,
+    friendlyLids,
+  );
   const leftX = geometry.face.leftEye.x;
   const leftY = geometry.face.leftEye.y;
   const rightX = geometry.face.rightEye.x;
   const rightY = geometry.face.rightEye.y;
-  const browClearance = eyeStyle === "tall" ? 7.15 : 6.15;
-  const leftBrowY = leftY - browClearance + browLift - browAsymmetry * 0.5;
-  const rightBrowY = rightY - browClearance + browLift + browAsymmetry * 0.5;
   const maximumRadiusX = Math.max(leftDimensions.radiusX, rightDimensions.radiusX);
   const maximumRadiusY = Math.max(leftDimensions.radiusY, rightDimensions.radiusY);
+  const legacyBrowClearance = eyeStyle === "tall" ? 7.15 : 6.15;
+  const browClearance = friendlyLids
+    ? Math.min(7.1, Math.max(5, maximumRadiusY + 2.6))
+    : legacyBrowClearance;
+  const leftBrowY = leftY - browClearance + browLift - browAsymmetry * 0.5;
+  const rightBrowY = rightY - browClearance + browLift + browAsymmetry * 0.5;
   const glassWidth = Math.max(8.8, maximumRadiusX * 2 + 3.5);
-  const glassHeight = Math.max(8, maximumRadiusY * 2 + 3.1);
+  const uncappedGlassHeight = Math.max(8, maximumRadiusY * 2 + 3.1);
+  const glassHeight = friendlyLids ? Math.min(10.5, uncappedGlassHeight) : uncappedGlassHeight;
   const bridgeY = (leftY + rightY) / 2;
 
   return (
@@ -248,6 +358,7 @@ export function Eyes({
       <Eye
         centerX={leftX}
         centerY={leftY}
+        friendlyLids={friendlyLids}
         gazeX={gazeX}
         gazeY={gazeY}
         pupilScale={leftDimensions.pupilScale}
@@ -260,6 +371,7 @@ export function Eyes({
       <Eye
         centerX={rightX}
         centerY={rightY}
+        friendlyLids={friendlyLids}
         gazeX={gazeX}
         gazeY={gazeY}
         pupilScale={rightDimensions.pupilScale}

@@ -87,6 +87,7 @@ export const AgentAvatar = memo(function AgentAvatar({
       className={classes}
       data-agent-id={agentId}
       data-acting-style={identity.actingStyle}
+      data-appearance-version={identity.appearanceVersion}
       data-detail={detail}
       data-dominant-side={identity.dominantSide}
       data-motion={motion}
@@ -120,6 +121,7 @@ export const AgentAvatar = memo(function AgentAvatar({
                     browStyle={identity.browStyle}
                     eyeStyle={identity.eyeStyle}
                     featureScale={identity.featureScale}
+                    friendlyLids={identity.appearanceVersion >= 4}
                     gazeX={expression.gazeX}
                     gazeY={expression.gazeY}
                     geometry={geometry}

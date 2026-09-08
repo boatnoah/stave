@@ -16,8 +16,10 @@ Original procedural SVG agents for Stave.
 builds a shared landmark geometry for the head, hair envelope, ears, eyes, nose, mouth, and
 marks, then adds deterministic crown lean, unequal fullness, jaw skew, and chin offset. Eye
 recipes vary their actual construction—beads, buttons, almonds, sleepy arcs, tall ovals, hooded
-lids, an uneven pair, and wide eyes—while keeping one coherent gaze. Existing saved agents can
-still request `appearanceVersion={1}`, `appearanceVersion={2}`, or `appearanceVersion={3}`.
+lids, an uneven pair, and wide eyes—while keeping one coherent gaze. A face-colored upper lid
+masks each version 4 eye after the pupil is drawn, reducing exposed white without flattening the
+eye families into one shape. Existing saved agents can still request `appearanceVersion={1}`,
+`appearanceVersion={2}`, or `appearanceVersion={3}`.
 
 `status` affects expression and work motion, never identity. Temperament changes how an agent
 rests, while a seeded acting style chooses whether it tends to ponder, mutter, nod, react, or

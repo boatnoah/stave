@@ -223,10 +223,46 @@ describe("AgentAvatar", () => {
 
     expect(markup).toContain(`data-eye-style="${eyeStyle}"`);
     expect(markup.match(/data-eye-family=/g)).toHaveLength(2);
+    expect(markup.match(/agent-avatar__eye-lid"/g)).toHaveLength(2);
+    expect(markup.match(/agent-avatar__eye-lid-cover/g)).toHaveLength(2);
 
     if (eyeStyle === "bead") expect(markup).not.toContain("agent-avatar__eye-white");
-    if (eyeStyle === "sleepy" || eyeStyle === "hooded") {
-      expect(markup).toContain("agent-avatar__eye-lid");
-    }
+  });
+
+  it("renders each friendly lid after its pupil so the lid can occlude the eye", () => {
+    const markup = renderToStaticMarkup(
+      <AgentAvatar
+        agentId="friendly-eyes"
+        name="Friendly eyes"
+        avatarSeed="eye-62"
+        status="waiting"
+        size={112}
+      />,
+    );
+    const eyeGroups = markup.match(
+      /<g class="agent-avatar__eye agent-avatar__eye--(?:left|right)"[^>]*>.*?<\/g><\/g>/g,
+    );
+
+    expect(eyeGroups).toHaveLength(2);
+    expect(
+      eyeGroups?.every(
+        (group) => group.indexOf("agent-avatar__pupil") < group.indexOf("agent-avatar__eye-lid"),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps pre-version-four eye rendering stable", () => {
+    const markup = renderToStaticMarkup(
+      <AgentAvatar
+        agentId="legacy-eyes"
+        name="Legacy eyes"
+        avatarSeed="arlo-engineer"
+        appearanceVersion={3}
+        status="idle"
+        size={112}
+      />,
+    );
+
+    expect(markup).not.toContain("agent-avatar__eye-lid-layer");
   });
 });
