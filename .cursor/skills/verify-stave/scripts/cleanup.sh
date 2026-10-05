@@ -8,6 +8,49 @@ fi
 
 port="$1"
 state_dir="$2"
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd "$script_dir/../../../.." && pwd)"
+user_home="$(cd && pwd -P)"
+
+if [[ ! "$port" =~ ^[0-9]+$ ]] || (( port < 1024 || port > 65535 )); then
+  echo "port must be an integer from 1024 through 65535" >&2
+  exit 64
+fi
+
+if [[ ! -d "$state_dir" ]]; then
+  echo "state directory does not exist: $state_dir" >&2
+  exit 1
+fi
+
+canonical_state_dir="$(cd "$state_dir" && pwd -P)"
+owner_file="$canonical_state_dir/.stave-verification-owner"
+
+if [[ "$canonical_state_dir" == "/" || "$canonical_state_dir" == "$user_home" || "$canonical_state_dir" == "$repo_root" ]]; then
+  echo "refusing unsafe state directory: $canonical_state_dir" >&2
+  exit 1
+fi
+
+if [[ ! -f "$owner_file" ]]; then
+  echo "refusing unmarked state directory: $canonical_state_dir" >&2
+  exit 1
+fi
+
+owner_line_count="$(wc -l <"$owner_file" | tr -d ' ')"
+owner_version="$(sed -n '1p' "$owner_file")"
+owner_path="$(sed -n '2p' "$owner_file")"
+owner_port="$(sed -n '3p' "$owner_file")"
+owner_launcher_pid="$(sed -n '4p' "$owner_file")"
+if [[ "$owner_line_count" != "4" || "$owner_version" != "stave-verification-v1" || "$owner_path" != "$canonical_state_dir" || "$owner_port" != "$port" || ! "$owner_launcher_pid" =~ ^[0-9]+$ ]]; then
+  echo "refusing state directory with invalid ownership marker: $canonical_state_dir" >&2
+  exit 1
+fi
+
+if [[ ! -f "$canonical_state_dir/launcher.pid" || "$(<"$canonical_state_dir/launcher.pid")" != "$owner_launcher_pid" ]]; then
+  echo "refusing state directory with mismatched launcher identity: $canonical_state_dir" >&2
+  exit 1
+fi
+
+state_dir="$canonical_state_dir"
 
 declare -a process_tree=()
 

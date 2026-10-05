@@ -31,10 +31,6 @@ export function createProject(input: CreateProjectInput): Project {
   }
 
   const template = input.teamTemplate ?? softwareDeliveryTeamV1;
-  if (template.members.length === 0) {
-    throw new Error("Team template cannot be empty");
-  }
-
   return {
     id: input.id,
     name,

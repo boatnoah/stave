@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { agentId, createProject, nextStage, projectId, softwareDeliveryTeamV1 } from "../src";
+import {
+  agentId,
+  createProject,
+  instantiateTeam,
+  nextStage,
+  projectId,
+  softwareDeliveryTeamV1,
+} from "../src";
 
 describe("createProject", () => {
   it("creates a project-owned three-agent software delivery team", () => {
@@ -58,6 +65,27 @@ describe("createProject", () => {
       name: "Stave",
       createAgentId: () => agentId("same-agent"),
     })).toThrow("Team template created duplicate agent id");
+  });
+
+  it("validates templates through the public team constructor", () => {
+    const project = projectId("project-5");
+    expect(() => instantiateTeam(project, () => agentId("agent"), {
+      id: "empty",
+      version: 1,
+      members: [],
+    })).toThrow("Team template cannot be empty");
+
+    expect(() => instantiateTeam(project, () => agentId("agent"), {
+      id: " ",
+      version: 0,
+      members: [softwareDeliveryTeamV1.members[0]],
+    })).toThrow("Team template requires an id and positive integer version");
+
+    expect(() => instantiateTeam(project, (member) => agentId(member.key), {
+      id: "duplicate-keys",
+      version: 1,
+      members: [softwareDeliveryTeamV1.members[0], softwareDeliveryTeamV1.members[0]],
+    })).toThrow("Team template contains duplicate member key");
   });
 });
 

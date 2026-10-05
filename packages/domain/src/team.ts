@@ -63,6 +63,10 @@ export function instantiateTeam(
     throw new Error("Team template requires an id and positive integer version");
   }
 
+  if (template.members.length === 0) {
+    throw new Error("Team template cannot be empty");
+  }
+
   return template.members.map((member) => {
     if (keys.has(member.key)) {
       throw new Error(`Team template contains duplicate member key: ${member.key}`);
