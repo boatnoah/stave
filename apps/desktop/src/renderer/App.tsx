@@ -1,4 +1,9 @@
-import { AgentAvatar, avatarStatuses, type AvatarStatus } from "@stave/avatar";
+import {
+  AgentAvatar,
+  avatarStatuses,
+  createAvatarIdentity,
+  type AvatarStatus,
+} from "@stave/avatar";
 import { useState } from "react";
 
 interface DemoAgent {
@@ -12,26 +17,26 @@ interface DemoAgent {
 
 const agents: readonly DemoAgent[] = [
   {
-    id: "nora",
-    name: "Nora",
+    id: "inez",
+    name: "Inez",
     role: "Product",
-    seed: "nora-product-v1",
-    status: "idle",
-    activity: "Shaping the next task",
+    seed: "eye-7",
+    status: "working",
+    activity: "Thinking through the next decision",
   },
   {
     id: "arlo",
     name: "Arlo",
     role: "Engineer",
-    seed: "arlo-engineer-v1",
-    status: "working",
-    activity: "Reading the event stream",
+    seed: "eye-66",
+    status: "reviewing",
+    activity: "Reading the run history",
   },
   {
     id: "suri",
     name: "Suri",
     role: "Reviewer",
-    seed: "suri-reviewer-v1",
+    seed: "eye-316",
     status: "reviewing",
     activity: "Checking the proposed diff",
   },
@@ -39,21 +44,69 @@ const agents: readonly DemoAgent[] = [
     id: "milo",
     name: "Milo",
     role: "Research",
-    seed: "milo-research-v1",
+    seed: "eye-363",
     status: "waiting",
     activity: "Waiting on one decision",
+  },
+  {
+    id: "june",
+    name: "June",
+    role: "Design",
+    seed: "eye-292",
+    status: "idle",
+    activity: "Sketching the handoff",
+  },
+  {
+    id: "theo",
+    name: "Theo",
+    role: "Quality",
+    seed: "eye-263",
+    status: "done",
+    activity: "Verification passed",
+  },
+  {
+    id: "bea",
+    name: "Bea",
+    role: "Delivery",
+    seed: "eye-302",
+    status: "blocked",
+    activity: "Flagging a dependency",
+  },
+  {
+    id: "ren",
+    name: "Ren",
+    role: "Security",
+    seed: "eye-62",
+    status: "queued",
+    activity: "Ready for the next review",
+  },
+  {
+    id: "sol",
+    name: "Sol",
+    role: "Operations",
+    seed: "eye-148",
+    status: "failed",
+    activity: "A verification step failed",
+  },
+  {
+    id: "oda",
+    name: "Oda",
+    role: "Platform",
+    seed: "eye-205",
+    status: "working",
+    activity: "Muttering through a migration",
   },
 ];
 
 const stateDescriptions: Record<AvatarStatus, string> = {
-  idle: "A rare blink. Otherwise still.",
-  queued: "Present, but deliberately quiet.",
-  working: "Subtle focus and reading motion.",
-  reviewing: "Eyes scan from left to right.",
-  waiting: "A small upward glance asks for input.",
-  blocked: "One concerned tilt, then rest.",
-  done: "A short nod and smile.",
-  failed: "A brief recoil, then a stable expression.",
+  idle: "A rare breath, blink, or uneven tilt.",
+  queued: "Thought dots gather, then settle.",
+  working: "Scan, mutter, consider, nod, then rest.",
+  reviewing: "A slow scan ends in a quiet hmm.",
+  waiting: "The mouth asks as a question mark appears.",
+  blocked: "A tangled thought and a long sigh.",
+  done: "A deliberate nod, wider smile, and two sparks.",
+  failed: "A small recoil, trembling mouth, and a restrained tear.",
 };
 
 const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
@@ -66,17 +119,17 @@ export function App() {
       <header className="app-header">
         <div className="wordmark">
           <span>Stave</span>
-          <span className="wordmark__context">Avatar study 01</span>
+          <span className="wordmark__context">Avatar study 04</span>
         </div>
         <p className="app-header__note">Procedural SVG · no image assets</p>
       </header>
 
       <section className="intro" aria-labelledby="page-title">
         <p className="eyebrow">Living crew</p>
-        <h1 id="page-title">Agents should feel present, not busy.</h1>
+        <h1 id="page-title">The eyes should not share a mold.</h1>
         <p className="intro__copy">
-          Stable hand-drawn identities with motion tied to real execution state. At board size,
-          the avatar replaces another spinner—not another piece of chrome.
+          Ink beads, open buttons, pointed almonds, heavy lids, tall ovals, sleepy arcs, and one
+          deliberately uneven pair—all sharing a coherent gaze.
         </p>
       </section>
 
@@ -103,6 +156,7 @@ export function App() {
       <section className="agent-grid" aria-label="Agent avatar studies">
         {agents.map((agent) => {
           const status = stateOverride ?? agent.status;
+          const identity = createAvatarIdentity(agent.seed);
 
           return (
             <article className="agent-study" key={agent.id}>
@@ -120,6 +174,9 @@ export function App() {
                 </div>
                 <span className="state-label">{titleCase(status)}</span>
               </div>
+              <p className="agent-study__traits">
+                {identity.headShape} · {identity.eyeStyle} eyes · {identity.hairStyle}
+              </p>
               <p className="agent-study__activity">
                 {stateOverride ? stateDescriptions[status] : agent.activity}
               </p>
@@ -138,12 +195,13 @@ export function App() {
         </div>
 
         <div className="mini-board">
-          {agents.slice(0, 3).map((agent, index) => {
+          {agents.slice(0, 4).map((agent, index) => {
             const status = stateOverride ?? agent.status;
             const tasks = [
               "Define launch success metrics",
               "Stream Codex run events",
               "Prove retry behavior",
+              "Review the permissions boundary",
             ] as const;
 
             return (

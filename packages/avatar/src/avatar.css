@@ -1,11 +1,27 @@
 .agent-avatar {
+  --avatar-accent: #a96149;
+  --avatar-eye: #fffaf1;
+  --avatar-face: #f8f3e9;
+  --avatar-hair: #302d29;
+  --avatar-hair-line: #e8dfd0;
   --avatar-ink: #302d29;
   --avatar-paper: #f2ecdf;
   --avatar-paper-deep: #e8dfd0;
+  --avatar-motion-intensity: 1;
+  --avatar-resting-tilt: 0deg;
+  --avatar-nod-scale: 1;
   display: inline-grid;
   flex: 0 0 auto;
   place-items: center;
   vertical-align: middle;
+}
+
+.agent-avatar[data-acting-style="nodder"] {
+  --avatar-nod-scale: 1.45;
+}
+
+.agent-avatar[data-acting-style="reactive"] {
+  --avatar-nod-scale: 1.22;
 }
 
 .agent-avatar svg {
@@ -19,6 +35,7 @@
   fill: var(--avatar-paper);
   stroke: color-mix(in srgb, var(--avatar-ink) 28%, transparent);
   stroke-width: 1.1;
+  transition: opacity 160ms ease;
 }
 
 .agent-avatar__paper-echo {
@@ -29,14 +46,31 @@
   stroke-width: 0.75;
 }
 
-.agent-avatar__character {
+/* Hero portraits are free-standing doodles; only compact UI avatars keep the badge. */
+.agent-avatar[data-detail="hero"] .agent-avatar__paper,
+.agent-avatar[data-detail="hero"] .agent-avatar__paper-echo {
+  opacity: 0;
+}
+
+.agent-avatar__presence,
+.agent-avatar__status-pose,
+.agent-avatar__reaction-pose,
+.agent-avatar__character,
+.agent-avatar__pupil,
+.agent-avatar__brows,
+.agent-avatar__mouth-rig,
+.agent-avatar__status-effect {
   transform-box: fill-box;
   transform-origin: center;
 }
 
+.agent-avatar__character {
+  transform: rotate(var(--avatar-resting-tilt));
+}
+
 .agent-avatar__ear,
 .agent-avatar__head-fill {
-  fill: #f8f3e9;
+  fill: var(--avatar-face);
   stroke: none;
 }
 
@@ -45,16 +79,22 @@
 .agent-avatar__head-echo,
 .agent-avatar__hair-line,
 .agent-avatar__hair-tuft,
+.agent-avatar__hair-tie,
+.agent-avatar__hair-detail,
 .agent-avatar__cap-line,
 .agent-avatar__cap-brim,
 .agent-avatar__eye-white,
+.agent-avatar__eye-lid,
 .agent-avatar__brows path,
 .agent-avatar__glasses circle,
+.agent-avatar__glasses ellipse,
 .agent-avatar__glasses rect,
 .agent-avatar__glasses path,
 .agent-avatar__nose,
 .agent-avatar__mouth,
-.agent-avatar__cheek {
+.agent-avatar__face-mark--scar,
+.agent-avatar__effect-line,
+.agent-avatar__tear-track {
   fill: none;
   stroke: var(--avatar-ink);
   stroke-linecap: round;
@@ -66,9 +106,9 @@
 }
 
 .agent-avatar__head-echo {
-  opacity: 0.18;
-  stroke-width: 0.7;
-  transform: translate(0.45px, -0.3px) rotate(var(--avatar-line-tilt));
+  opacity: 0.21;
+  stroke-width: 0.68;
+  transform: translate(0.3px, -0.2px) rotate(var(--avatar-line-tilt));
   transform-box: fill-box;
   transform-origin: center;
 }
@@ -78,9 +118,11 @@
 }
 
 .agent-avatar__hair,
+.agent-avatar__hair-back,
+.agent-avatar__hair-curls-front,
 .agent-avatar__cap {
-  fill: var(--avatar-ink);
-  stroke: var(--avatar-ink);
+  fill: var(--avatar-hair);
+  stroke: var(--avatar-hair);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 1.25;
@@ -88,8 +130,9 @@
 
 .agent-avatar__hair-line,
 .agent-avatar__cap-line,
-.agent-avatar__cap-brim {
-  stroke: var(--avatar-paper-deep);
+.agent-avatar__cap-brim,
+.agent-avatar__hair-detail {
+  stroke: var(--avatar-hair-line);
   stroke-width: 0.9;
 }
 
@@ -97,19 +140,69 @@
   stroke-width: 1.5;
 }
 
+.agent-avatar__hair--buzz {
+  fill: color-mix(in srgb, var(--avatar-hair) 82%, var(--avatar-face));
+}
+
+.agent-avatar__hair-locs path {
+  fill: none;
+  stroke: var(--avatar-hair);
+  stroke-linecap: round;
+  stroke-width: 4.3;
+}
+
+.agent-avatar__hair-braid .agent-avatar__hair-tie {
+  fill: none;
+  stroke: var(--avatar-accent);
+  stroke-width: 1.8;
+}
+
 .agent-avatar__brows path {
   stroke-width: 1.5;
 }
 
+.agent-avatar__eyes-and-brows[data-brow-style="bold"] .agent-avatar__brows path {
+  stroke-width: 2.25;
+}
+
 .agent-avatar__eye {
+  animation: stave-avatar-blink var(--avatar-blink-duration) var(--avatar-motion-delay) infinite;
   transform-box: fill-box;
   transform-origin: center;
-  animation: stave-avatar-blink var(--avatar-blink-duration) var(--avatar-motion-delay) infinite;
+}
+
+.agent-avatar[data-appearance-version="4"] .agent-avatar__eye {
+  transform-origin: center 58%;
 }
 
 .agent-avatar__eye-white {
-  fill: #fffaf1;
+  fill: var(--avatar-eye);
   stroke-width: 1.15;
+}
+
+.agent-avatar__eye-lid {
+  fill: none;
+  stroke: var(--avatar-ink);
+  stroke-linecap: round;
+  stroke-width: 1.35;
+}
+
+.agent-avatar__eye-lid-cover {
+  fill: var(--avatar-face);
+  stroke: none;
+}
+
+.agent-avatar__eyes-and-brows[data-eye-style="sleepy"] .agent-avatar__eye-lid,
+.agent-avatar__eyes-and-brows[data-eye-style="hooded"] .agent-avatar__eye-lid {
+  stroke-width: 1.55;
+}
+
+.agent-avatar[data-detail="compact"] .agent-avatar__eye-lid {
+  stroke-width: 1.55;
+}
+
+.agent-avatar__pupil {
+  fill: var(--avatar-ink);
 }
 
 .agent-avatar__pupils {
@@ -118,10 +211,21 @@
   transform-origin: center;
 }
 
+.agent-avatar__pupil-glint {
+  fill: var(--avatar-eye);
+  stroke: none;
+}
+
 .agent-avatar__glasses circle,
+.agent-avatar__glasses ellipse,
 .agent-avatar__glasses rect,
 .agent-avatar__glasses path {
   stroke-width: 1.25;
+}
+
+.agent-avatar__monocle path {
+  opacity: 0.72;
+  stroke-width: 0.85;
 }
 
 .agent-avatar__nose,
@@ -130,45 +234,300 @@
 }
 
 .agent-avatar__cheek {
+  fill: none;
   opacity: 0.34;
+  stroke: var(--avatar-ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
   stroke-width: 0.8;
 }
 
-.agent-avatar[data-status="working"] .agent-avatar__character {
-  animation: stave-avatar-focus 3.8s ease-in-out var(--avatar-motion-delay) infinite;
+.agent-avatar[data-appearance-version="1"] .agent-avatar__head-fill,
+.agent-avatar[data-appearance-version="1"] .agent-avatar__ear {
+  fill: #f8f3e9;
 }
 
-.agent-avatar[data-status="working"] .agent-avatar__pupils {
-  animation: stave-avatar-working-gaze 4.6s ease-in-out var(--avatar-motion-delay) infinite;
+.agent-avatar[data-appearance-version="1"] .agent-avatar__head-echo {
+  opacity: 0.18;
+  stroke-width: 0.7;
+  transform: translate(0.45px, -0.3px) rotate(var(--avatar-line-tilt));
 }
 
-.agent-avatar[data-status="reviewing"] .agent-avatar__pupils {
-  animation: stave-avatar-review-gaze 3.4s ease-in-out var(--avatar-motion-delay) infinite;
+.agent-avatar[data-appearance-version="1"] .agent-avatar__hair,
+.agent-avatar[data-appearance-version="1"] .agent-avatar__cap {
+  fill: var(--avatar-ink);
+  stroke: var(--avatar-ink);
 }
 
-.agent-avatar[data-status="waiting"] .agent-avatar__brows {
-  animation: stave-avatar-brow-question 4.8s ease-in-out var(--avatar-motion-delay) infinite;
+.agent-avatar[data-appearance-version="1"] .agent-avatar__hair-line,
+.agent-avatar[data-appearance-version="1"] .agent-avatar__cap-line,
+.agent-avatar[data-appearance-version="1"] .agent-avatar__cap-brim {
+  stroke: var(--avatar-paper-deep);
+}
+
+.agent-avatar[data-appearance-version="1"] .agent-avatar__eye-white {
+  fill: #fffaf1;
+}
+
+.agent-avatar__mouth-rest,
+.agent-avatar__mouth-open,
+.agent-avatar__mouth-alt {
   transform-box: fill-box;
   transform-origin: center;
 }
 
-.agent-avatar[data-status="blocked"] .agent-avatar__character {
-  animation: stave-avatar-blocked 650ms ease-out both;
+.agent-avatar__mouth-open {
+  fill: color-mix(in srgb, var(--avatar-accent) 38%, var(--avatar-ink));
+  opacity: 0;
 }
 
-.agent-avatar[data-status="done"] .agent-avatar__character {
-  animation: stave-avatar-done 760ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+.agent-avatar__mouth-alt {
+  opacity: 0;
 }
 
-.agent-avatar[data-status="failed"] .agent-avatar__character {
-  animation: stave-avatar-failed 520ms ease-out both;
+.agent-avatar__mouth-rig[data-mouth-shape="open"] .agent-avatar__mouth-rest {
+  opacity: 0;
 }
 
+.agent-avatar__mouth-rig[data-mouth-shape="open"] .agent-avatar__mouth-open {
+  opacity: 1;
+}
+
+.agent-avatar__face-mark {
+  fill: var(--avatar-accent);
+  stroke: none;
+}
+
+.agent-avatar__face-mark--freckles {
+  opacity: 0.72;
+}
+
+.agent-avatar__face-mark--blush {
+  opacity: 0.28;
+}
+
+.agent-avatar__face-mark--mole {
+  fill: color-mix(in srgb, var(--avatar-ink) 74%, var(--avatar-accent));
+}
+
+.agent-avatar__face-mark--scar {
+  opacity: 0.56;
+  stroke: var(--avatar-accent);
+  stroke-width: 0.75;
+}
+
+.agent-avatar__status-effect {
+  pointer-events: none;
+}
+
+.agent-avatar__effect-line {
+  stroke-width: 1.15;
+}
+
+.agent-avatar__status-dot,
+.agent-avatar__thought-link,
+.agent-avatar__tear-drop {
+  fill: var(--avatar-accent);
+  stroke: none;
+}
+
+.agent-avatar__thought-cloud {
+  fill: color-mix(in srgb, var(--avatar-paper) 84%, transparent);
+}
+
+.agent-avatar__tear-track {
+  opacity: 0.68;
+  stroke: color-mix(in srgb, var(--avatar-accent) 58%, var(--avatar-ink));
+  stroke-width: 0.95;
+}
+
+.agent-avatar__tear-drop {
+  opacity: 0.82;
+}
+
+.agent-avatar__status-effect--queue {
+  opacity: 0.18;
+}
+
+.agent-avatar__status-effect--thought,
+.agent-avatar__status-effect--hmm,
+.agent-avatar__status-effect--question {
+  opacity: 0.5;
+}
+
+.agent-avatar__status-effect--blocked {
+  opacity: 0.52;
+}
+
+.agent-avatar__status-effect--done {
+  opacity: 0;
+}
+
+/* Temperament supplies a rare ambient gesture, on its own transform layer. */
+.agent-avatar[data-detail="hero"][data-personality="curious"] .agent-avatar__presence {
+  animation: stave-avatar-curious-rest 10.4s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-detail="hero"][data-personality="bright"] .agent-avatar__presence {
+  animation: stave-avatar-bright-rest 11.8s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-detail="hero"][data-personality="wry"] .agent-avatar__presence {
+  animation: stave-avatar-wry-rest 12.8s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+/* Status acting: long holds, one readable beat, then stillness. */
+.agent-avatar[data-status="queued"] .agent-avatar__status-effect--queue {
+  animation: stave-avatar-queue-dots 7.8s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="queued"] .agent-avatar__status-dot--2 {
+  animation: stave-avatar-dot-pop 7.8s ease-in-out calc(var(--avatar-acting-delay) + 100ms) infinite;
+}
+
+.agent-avatar[data-status="queued"] .agent-avatar__status-dot--3 {
+  animation: stave-avatar-dot-pop 7.8s ease-in-out calc(var(--avatar-acting-delay) + 200ms) infinite;
+}
+
+.agent-avatar[data-status="working"] .agent-avatar__status-pose {
+  animation: stave-avatar-working-pose 8.2s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="working"] .agent-avatar__pupil {
+  animation: stave-avatar-working-gaze 8.2s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="working"] .agent-avatar__mouth-rest {
+  animation: stave-avatar-mouth-rest-beat 8.2s step-end var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="working"] .agent-avatar__mouth-open {
+  animation: stave-avatar-mouth-open-beat 8.2s step-end var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="working"] .agent-avatar__status-effect--thought {
+  animation: stave-avatar-thought 8.2s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-acting-style="reserved"][data-status="working"] .agent-avatar__mouth-rest,
+.agent-avatar[data-acting-style="reserved"][data-status="working"] .agent-avatar__mouth-open {
+  animation: none;
+}
+
+.agent-avatar[data-status="reviewing"] .agent-avatar__status-pose {
+  animation: stave-avatar-review-pose 7.4s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="reviewing"] .agent-avatar__pupil {
+  animation: stave-avatar-review-gaze 7.4s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="reviewing"] .agent-avatar__mouth-rig {
+  animation: stave-avatar-mouth-purse 7.4s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="reviewing"] .agent-avatar__status-effect--hmm {
+  animation: stave-avatar-hmm 7.4s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="waiting"] .agent-avatar__status-pose {
+  animation: stave-avatar-listen-pose 8.6s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="waiting"] .agent-avatar__brows {
+  animation: stave-avatar-brow-question 8.6s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="waiting"] .agent-avatar__mouth-rest {
+  animation: stave-avatar-mouth-rest-question 8.6s step-end var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="waiting"] .agent-avatar__mouth-open {
+  animation: stave-avatar-mouth-open-question 8.6s step-end var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="waiting"] .agent-avatar__status-effect--question {
+  animation: stave-avatar-question-mark 8.6s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="blocked"] .agent-avatar__status-pose {
+  transform: translateY(0.25px) rotate(-0.55deg);
+}
+
+.agent-avatar[data-status="blocked"] .agent-avatar__sigh-line {
+  animation: stave-avatar-sigh 9.8s ease-in-out var(--avatar-acting-delay) infinite;
+}
+
+.agent-avatar[data-status="failed"] .agent-avatar__status-pose {
+  transform: translateY(0.45px) rotate(0.45deg);
+}
+
+/* Terminal reactions fire only after a real state transition. */
+.agent-avatar[data-reaction="blocked"] .agent-avatar__reaction-pose {
+  animation: stave-avatar-blocked 760ms ease-out both;
+}
+
+.agent-avatar[data-reaction="blocked"] .agent-avatar__mouth-rig {
+  animation: stave-avatar-mouth-exhale 760ms ease-out both;
+}
+
+.agent-avatar[data-reaction="blocked"] .agent-avatar__blocked-knot {
+  animation: stave-avatar-knot 760ms ease-out both;
+}
+
+.agent-avatar[data-reaction="done"] .agent-avatar__reaction-pose {
+  animation: stave-avatar-done 880ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.agent-avatar[data-reaction="done"] .agent-avatar__mouth-rest {
+  animation: stave-avatar-done-mouth-rest 880ms step-end both;
+}
+
+.agent-avatar[data-reaction="done"] .agent-avatar__mouth-open {
+  animation: stave-avatar-done-mouth-open 880ms step-end both;
+}
+
+.agent-avatar[data-reaction="done"] .agent-avatar__mouth-alt {
+  animation: stave-avatar-done-mouth-alt 880ms step-end both;
+}
+
+.agent-avatar[data-reaction="done"] .agent-avatar__status-effect--done {
+  animation: stave-avatar-sparkles 880ms ease-out both;
+}
+
+.agent-avatar[data-reaction="failed"] .agent-avatar__reaction-pose {
+  animation: stave-avatar-failed 820ms ease-out both;
+}
+
+.agent-avatar[data-reaction="failed"] .agent-avatar__mouth-rig {
+  animation: stave-avatar-mouth-tremble 820ms ease-out both;
+}
+
+.agent-avatar[data-reaction="failed"] .agent-avatar__tear-drop {
+  animation: stave-avatar-tear 820ms ease-in both;
+}
+
+.agent-avatar[data-reaction="failed"] .agent-avatar__tear--secondary .agent-avatar__tear-drop {
+  animation-delay: 90ms;
+}
+
+.agent-avatar[data-detail="compact"] .agent-avatar__presence,
+.agent-avatar[data-detail="compact"] .agent-avatar__status-pose,
+.agent-avatar[data-detail="compact"] .agent-avatar__reaction-pose,
+.agent-avatar[data-detail="compact"] .agent-avatar__character,
+.agent-avatar[data-detail="compact"] .agent-avatar__mouth-rig,
+.agent-avatar[data-detail="compact"] .agent-avatar__mouth-rest,
+.agent-avatar[data-detail="compact"] .agent-avatar__mouth-open {
+  animation: none;
+}
+
+.agent-avatar[data-detail="compact"] .agent-avatar__status-effect,
 .agent-avatar[data-detail="compact"] .agent-avatar__head-echo,
 .agent-avatar[data-detail="compact"] .agent-avatar__paper-echo,
-.agent-avatar[data-detail="compact"] .agent-avatar__cheek,
+.agent-avatar[data-detail="compact"] .agent-avatar__face-mark,
+.agent-avatar[data-detail="compact"] .agent-avatar__pupil-glint,
 .agent-avatar[data-detail="compact"] .agent-avatar__nose,
-.agent-avatar[data-detail="compact"] .agent-avatar__hair-line {
+.agent-avatar[data-detail="compact"] .agent-avatar__hair-detail {
   display: none;
 }
 
@@ -179,114 +538,182 @@
 }
 
 @keyframes stave-avatar-blink {
-  0%,
-  91%,
-  94%,
-  100% {
-    transform: scaleY(1);
-  }
-
-  92.5% {
-    transform: scaleY(0.12);
-  }
+  0%, 91%, 94%, 100% { transform: scaleY(1); }
+  92.5% { transform: scaleY(0.08); }
 }
 
-@keyframes stave-avatar-focus {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
+@keyframes stave-avatar-curious-rest {
+  0%, 58%, 100% { transform: translateY(0) rotate(0deg); }
+  66%, 76% { transform: translateY(calc(-0.35px * var(--avatar-motion-intensity))) rotate(-0.7deg); }
+}
 
-  45% {
-    transform: translateY(0.55px) rotate(-0.35deg);
-  }
+@keyframes stave-avatar-bright-rest {
+  0%, 68%, 100% { transform: translateY(0); }
+  75% { transform: translateY(calc(-0.55px * var(--avatar-motion-intensity))); }
+  82% { transform: translateY(0.1px); }
+}
 
-  72% {
-    transform: translateY(0.15px) rotate(0.25deg);
-  }
+@keyframes stave-avatar-wry-rest {
+  0%, 72%, 100% { transform: rotate(0deg); }
+  79%, 88% { transform: rotate(0.65deg); }
+}
+
+@keyframes stave-avatar-queue-dots {
+  0%, 18%, 64%, 100% { opacity: 0.12; transform: translateY(0); }
+  27%, 50% { opacity: 0.78; transform: translateY(-0.4px); }
+}
+
+@keyframes stave-avatar-dot-pop {
+  0%, 22%, 31%, 100% { transform: scale(0.65); }
+  25%, 28% { transform: scale(1.12); }
+}
+
+@keyframes stave-avatar-working-pose {
+  0%, 24%, 68%, 100% { transform: translateY(0) rotate(0deg); }
+  30%, 38% { transform: rotate(-0.3deg); }
+  44%, 51% { transform: rotate(0.28deg); }
+  58% { transform: translateY(calc(0.72px * var(--avatar-motion-intensity) * var(--avatar-nod-scale))) rotate(0.18deg); }
+  64% { transform: translateY(0.05px) rotate(0deg); }
 }
 
 @keyframes stave-avatar-working-gaze {
-  0%,
-  18%,
-  100% {
-    transform: translateX(-0.6px);
-  }
+  0%, 26%, 68%, 100% { transform: translate(0, 0); }
+  30%, 36% { transform: translateX(calc(-0.72px * var(--avatar-motion-intensity))); }
+  40%, 47% { transform: translateX(calc(0.72px * var(--avatar-motion-intensity))); }
+  53%, 61% { transform: translateY(calc(0.4px * var(--avatar-motion-intensity))); }
+}
 
-  35%,
-  55% {
-    transform: translateX(0.7px);
-  }
+@keyframes stave-avatar-mouth-rest-beat {
+  0%, 43%, 52%, 100% { opacity: 1; }
+  44%, 51% { opacity: 0; }
+}
 
-  72%,
-  88% {
-    transform: translate(0.1px, 0.45px);
-  }
+@keyframes stave-avatar-mouth-open-beat {
+  0%, 43%, 52%, 100% { opacity: 0; transform: scale(0.72); }
+  44%, 47% { opacity: 0.86; transform: scale(0.9, 0.58); }
+  48%, 51% { opacity: 0.75; transform: scale(0.72, 0.45); }
+}
+
+@keyframes stave-avatar-thought {
+  0%, 22%, 68%, 100% { opacity: 0; transform: translateY(1px) scale(0.88); }
+  30%, 56% { opacity: 0.72; transform: translateY(0) scale(1); }
+}
+
+@keyframes stave-avatar-review-pose {
+  0%, 62%, 100% { transform: rotate(0deg); }
+  71%, 86% { transform: rotate(-0.48deg); }
 }
 
 @keyframes stave-avatar-review-gaze {
-  0%,
-  22%,
-  100% {
-    transform: translateX(-0.85px);
-  }
+  0%, 20%, 82%, 100% { transform: translateX(calc(-0.8px * var(--avatar-motion-intensity))); }
+  42%, 64% { transform: translateX(calc(0.8px * var(--avatar-motion-intensity))); }
+}
 
-  48%,
-  72% {
-    transform: translateX(0.85px);
-  }
+@keyframes stave-avatar-mouth-purse {
+  0%, 60%, 100% { transform: scaleX(1); }
+  70%, 84% { transform: scaleX(0.78) translateY(-0.2px); }
+}
+
+@keyframes stave-avatar-hmm {
+  0%, 58%, 100% { opacity: 0; transform: translateX(0); }
+  70%, 86% { opacity: 0.58; transform: translateX(0.35px); }
+}
+
+@keyframes stave-avatar-listen-pose {
+  0%, 68%, 100% { transform: rotate(0deg); }
+  76%, 91% { transform: rotate(-0.65deg) translateY(-0.2px); }
 }
 
 @keyframes stave-avatar-brow-question {
-  0%,
-  72%,
-  100% {
-    transform: translateY(0);
-  }
+  0%, 71%, 100% { transform: translateY(0); }
+  78%, 92% { transform: translateY(-0.75px); }
+}
 
-  82%,
-  91% {
-    transform: translateY(-0.8px);
-  }
+@keyframes stave-avatar-mouth-rest-question {
+  0%, 74%, 91%, 100% { opacity: 1; }
+  78%, 88% { opacity: 0; }
+}
+
+@keyframes stave-avatar-mouth-open-question {
+  0%, 74%, 91%, 100% { opacity: 0; transform: scale(0.7); }
+  78%, 88% { opacity: 0.88; transform: scale(0.82, 0.68); }
+}
+
+@keyframes stave-avatar-question-mark {
+  0%, 68%, 100% { opacity: 0; transform: translateY(1px) rotate(-4deg); }
+  77%, 92% { opacity: 0.72; transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes stave-avatar-sigh {
+  0%, 72%, 100% { opacity: 0; transform: translateX(0); }
+  80%, 92% { opacity: 0.56; transform: translateX(0.7px); }
 }
 
 @keyframes stave-avatar-blocked {
-  0% {
-    transform: rotate(0deg);
-  }
+  0% { transform: translateX(0) rotate(0deg); }
+  28% { transform: translateX(-0.65px) rotate(-1.25deg); }
+  58% { transform: translateX(0.25px) rotate(0.45deg); }
+  100% { transform: translateY(0.3px) rotate(-0.4deg); }
+}
 
-  48% {
-    transform: rotate(-1.4deg);
-  }
+@keyframes stave-avatar-mouth-exhale {
+  0%, 30% { transform: scaleX(0.82); }
+  64% { transform: scale(1.08, 0.7); }
+  100% { transform: scaleX(0.9); }
+}
 
-  100% {
-    transform: rotate(-0.75deg);
-  }
+@keyframes stave-avatar-knot {
+  0% { opacity: 0; transform: scale(0.7) rotate(-10deg); }
+  55% { opacity: 0.8; transform: scale(1.08) rotate(4deg); }
+  100% { opacity: 0.52; transform: scale(1) rotate(0deg); }
 }
 
 @keyframes stave-avatar-done {
-  0%,
-  100% {
-    transform: translateY(0) rotate(0deg);
-  }
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  38% { transform: translateY(calc(1.3px * var(--avatar-motion-intensity) * var(--avatar-nod-scale))) rotate(0.5deg); }
+  66% { transform: translateY(calc(-0.35px * var(--avatar-motion-intensity))) rotate(-0.25deg); }
+}
 
-  42% {
-    transform: translateY(1.15px) rotate(0.6deg);
-  }
+@keyframes stave-avatar-done-mouth-rest {
+  0%, 30%, 82%, 100% { opacity: 1; }
+  38%, 72% { opacity: 0; }
+}
+
+@keyframes stave-avatar-done-mouth-open {
+  0%, 30%, 82%, 100% { opacity: 0; transform: scale(0.7); }
+  38%, 72% { opacity: 0.38; transform: scale(1.25, 0.52); }
+}
+
+@keyframes stave-avatar-done-mouth-alt {
+  0%, 30%, 82%, 100% { opacity: 0; transform: translateY(0) scaleX(0.8); }
+  38%, 72% { opacity: 1; transform: translateY(-0.1px) scaleX(1.08); }
+}
+
+@keyframes stave-avatar-sparkles {
+  0%, 22% { opacity: 0; transform: scale(0.55) rotate(-8deg); }
+  48%, 72% { opacity: 0.92; transform: scale(1.08) rotate(3deg); }
+  100% { opacity: 0; transform: scale(1.2) rotate(6deg); }
 }
 
 @keyframes stave-avatar-failed {
-  0% {
-    transform: translateX(0) rotate(0deg);
-  }
+  0% { transform: translateX(0) rotate(0deg); }
+  20% { transform: translateX(-0.65px) rotate(-0.7deg); }
+  36% { transform: translateX(0.55px) rotate(0.55deg); }
+  52% { transform: translateX(-0.3px) rotate(-0.3deg); }
+  100% { transform: translateY(0.65px) rotate(0.35deg); }
+}
 
-  38% {
-    transform: translateX(-0.8px) rotate(-0.9deg);
-  }
+@keyframes stave-avatar-mouth-tremble {
+  0%, 20%, 100% { transform: translateX(0) scaleX(1); }
+  31% { transform: translateX(-0.35px) scaleX(0.88); }
+  42% { transform: translateX(0.35px) scaleX(0.92); }
+  54% { transform: translateX(-0.2px) scaleX(0.9); }
+}
 
-  100% {
-    transform: translateX(0) rotate(-0.35deg);
-  }
+@keyframes stave-avatar-tear {
+  0%, 30% { opacity: 0; transform: translateY(-3px) scale(0.55); }
+  48% { opacity: 0.88; transform: translateY(-1px) scale(0.8); }
+  100% { opacity: 0.72; transform: translateY(3px) scale(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {

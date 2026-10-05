@@ -34,6 +34,7 @@ pnpm check
 ## Avatar principles
 
 - An agent keeps the same identity for a persisted seed and appearance version.
+- Silhouette, features, palette, and temperament carry identity—not hairstyle alone.
 - Motion communicates real execution state; it is never decorative noise.
 - Small board avatars stay restrained. Larger inspector avatars can be more expressive.
 - Reduced-motion users receive the same information through static expressions and text.
