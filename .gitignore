@@ -4,6 +4,8 @@ node_modules/
 out/
 dist/
 coverage/
+artifacts/verification/
+.audit/
 *.log
 .DS_Store
 .env
