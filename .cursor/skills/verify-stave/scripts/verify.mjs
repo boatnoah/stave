@@ -1,0 +1,189 @@
+#!/usr/bin/env node
+
+import assert from "node:assert/strict";
+import { mkdir, writeFile } from "node:fs/promises";
+import process from "node:process";
+
+const [, , command, portValue, evidenceDirectory] = process.argv;
+const port = Number(portValue);
+
+if (!command || !Number.isInteger(port) || port < 1024 || port > 65535) {
+  console.error("usage: verify.mjs <doctor|drive-state-preview> <port> [evidence-dir]");
+  process.exit(64);
+}
+
+async function getStavePage() {
+  const response = await fetch(`http://127.0.0.1:${port}/json/list`);
+  assert.equal(response.ok, true, `CDP endpoint returned ${response.status}`);
+  const pages = await response.json();
+  assert.ok(Array.isArray(pages), "CDP page list is not an array");
+  const page = pages.find(
+    (candidate) =>
+      candidate.type === "page" &&
+      candidate.title === "Stave" &&
+      typeof candidate.webSocketDebuggerUrl === "string",
+  );
+  assert.ok(page, "Stave renderer was not found in the CDP page list");
+  return page;
+}
+
+class CdpClient {
+  #nextId = 1;
+  #pending = new Map();
+  #socket;
+
+  constructor(url) {
+    this.#socket = new WebSocket(url);
+    this.#socket.addEventListener("message", (event) => {
+      const message = JSON.parse(String(event.data));
+      if (!message.id) return;
+      const pending = this.#pending.get(message.id);
+      if (!pending) return;
+      this.#pending.delete(message.id);
+      if (message.error) pending.reject(new Error(message.error.message));
+      else pending.resolve(message.result);
+    });
+  }
+
+  async open() {
+    if (this.#socket.readyState === WebSocket.OPEN) return;
+    await new Promise((resolve, reject) => {
+      this.#socket.addEventListener("open", resolve, { once: true });
+      this.#socket.addEventListener("error", reject, { once: true });
+    });
+  }
+
+  send(method, params = {}) {
+    const id = this.#nextId++;
+    return new Promise((resolve, reject) => {
+      this.#pending.set(id, { resolve, reject });
+      this.#socket.send(JSON.stringify({ id, method, params }));
+    });
+  }
+
+  close() {
+    this.#socket.close();
+  }
+}
+
+async function evaluate(client, expression) {
+  const result = await client.send("Runtime.evaluate", {
+    expression,
+    awaitPromise: true,
+    returnByValue: true,
+  });
+  if (result.exceptionDetails) {
+    throw new Error(result.exceptionDetails.text ?? "renderer evaluation failed");
+  }
+  return result.result.value;
+}
+
+async function captureScreenshot(client, path) {
+  const result = await client.send("Page.captureScreenshot", {
+    format: "png",
+    captureBeyondViewport: true,
+  });
+  await writeFile(path, Buffer.from(result.data, "base64"));
+}
+
+async function withStaveClient(callback) {
+  const page = await getStavePage();
+  const client = new CdpClient(page.webSocketDebuggerUrl);
+  await client.open();
+  try {
+    await client.send("Page.enable");
+    await client.send("Runtime.enable");
+    await evaluate(client, "document.fonts.ready.then(() => true)");
+    return await callback(client, page);
+  } finally {
+    client.close();
+  }
+}
+
+async function doctor() {
+  const result = await withStaveClient(async (client, page) => {
+    const surface = await evaluate(
+      client,
+      `(() => ({
+        title: document.title,
+        heading: document.querySelector('#page-title')?.textContent?.trim() ?? null,
+        statePicker: document.querySelector('[aria-label="Preview an avatar state"]') !== null,
+        agentCards: document.querySelectorAll('.agent-study').length,
+        taskCards: document.querySelectorAll('.task-card').length
+      }))()`,
+    );
+    assert.equal(surface.title, "Stave");
+    assert.equal(surface.statePicker, true, "state picker is missing");
+    assert.equal(surface.agentCards, 10, "expected ten agent studies");
+    assert.equal(surface.taskCards, 4, "expected four compact task cards");
+    return { ready: true, url: page.url, ...surface };
+  });
+  console.log(JSON.stringify(result, null, 2));
+}
+
+async function driveStatePreview() {
+  assert.ok(evidenceDirectory, "drive-state-preview requires an evidence directory");
+  await mkdir(evidenceDirectory, { recursive: true });
+
+  const result = await withStaveClient(async (client, page) => {
+    await captureScreenshot(client, `${evidenceDirectory}/before.png`);
+    const before = await evaluate(
+      client,
+      `(() => ({
+        selected: document.querySelector('.state-picker .is-active')?.textContent?.trim() ?? null,
+        labels: [...document.querySelectorAll('.state-label')].map((node) => node.textContent?.trim())
+      }))()`,
+    );
+
+    const action = await evaluate(
+      client,
+      `(() => {
+        const button = [...document.querySelectorAll('.state-picker button')]
+          .find((node) => node.textContent?.trim() === 'Blocked');
+        if (!button) return { clicked: false };
+        button.click();
+        return { clicked: true, label: button.textContent?.trim() };
+      })()`,
+    );
+    assert.equal(action.clicked, true, "Blocked state control was not found");
+    await new Promise((resolve) => setTimeout(resolve, 350));
+
+    const after = await evaluate(
+      client,
+      `(() => ({
+        selected: document.querySelector('.state-picker .is-active')?.textContent?.trim() ?? null,
+        labels: [...document.querySelectorAll('.state-label')].map((node) => node.textContent?.trim()),
+        avatarLabels: [...document.querySelectorAll('.agent-study .agent-avatar svg[aria-label]')]
+          .map((node) => node.getAttribute('aria-label'))
+      }))()`,
+    );
+    assert.equal(after.selected, "Blocked", "Blocked control is not selected");
+    assert.equal(after.labels.length, 10, "expected ten visible state labels");
+    assert.ok(after.labels.every((label) => label === "Blocked"), "not every card reports Blocked");
+    assert.equal(after.avatarLabels.length, 10, "expected ten accessible avatar labels");
+    assert.ok(
+      after.avatarLabels.every((label) => label?.endsWith(", blocked")),
+      "not every accessible avatar reports blocked",
+    );
+
+    await captureScreenshot(client, `${evidenceDirectory}/after.png`);
+    return {
+      passed: true,
+      feature: "avatar-state-preview",
+      pageUrl: page.url,
+      action,
+      before,
+      after,
+    };
+  });
+
+  await writeFile(`${evidenceDirectory}/result.json`, `${JSON.stringify(result, null, 2)}\n`);
+  console.log(JSON.stringify(result, null, 2));
+}
+
+if (command === "doctor") await doctor();
+else if (command === "drive-state-preview") await driveStatePreview();
+else {
+  console.error(`unknown command: ${command}`);
+  process.exit(64);
+}
