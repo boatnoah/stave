@@ -175,6 +175,26 @@ describe("AgentAvatar", () => {
     expect(eyeGroups?.every((group) => group.includes("agent-avatar__pupil"))).toBe(true);
   });
 
+  it("preserves the version one drawing recipe", () => {
+    const markup = renderToStaticMarkup(
+      <AgentAvatar
+        agentId="arlo"
+        name="Arlo"
+        avatarSeed="arlo-engineer"
+        appearanceVersion={1}
+        status="working"
+      />,
+    );
+
+    expect(markup).toContain("data-appearance-version=\"1\"");
+    expect(markup).toContain("agent-avatar__pupils");
+    expect(markup).toContain("M32.1 32.8 Q30.8 37.2 33.4 37.6");
+    expect(markup).toContain("M29 43.1 Q32 43.7 35.2 43.1");
+    expect(markup).toContain("M20.6 38.5 L23.1 38");
+    expect(markup).not.toContain("agent-avatar__presence");
+    expect(markup).not.toContain("agent-avatar__status-effect");
+  });
+
   it("renders state-specific acting props at hero size", () => {
     const thinking = renderToStaticMarkup(
       <AgentAvatar

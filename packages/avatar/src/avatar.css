@@ -205,6 +205,12 @@
   fill: var(--avatar-ink);
 }
 
+.agent-avatar__pupils {
+  fill: var(--avatar-ink);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
 .agent-avatar__pupil-glint {
   fill: var(--avatar-eye);
   stroke: none;
@@ -225,6 +231,42 @@
 .agent-avatar__nose,
 .agent-avatar__mouth {
   stroke-width: 1.35;
+}
+
+.agent-avatar__cheek {
+  fill: none;
+  opacity: 0.34;
+  stroke: var(--avatar-ink);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 0.8;
+}
+
+.agent-avatar[data-appearance-version="1"] .agent-avatar__head-fill,
+.agent-avatar[data-appearance-version="1"] .agent-avatar__ear {
+  fill: #f8f3e9;
+}
+
+.agent-avatar[data-appearance-version="1"] .agent-avatar__head-echo {
+  opacity: 0.18;
+  stroke-width: 0.7;
+  transform: translate(0.45px, -0.3px) rotate(var(--avatar-line-tilt));
+}
+
+.agent-avatar[data-appearance-version="1"] .agent-avatar__hair,
+.agent-avatar[data-appearance-version="1"] .agent-avatar__cap {
+  fill: var(--avatar-ink);
+  stroke: var(--avatar-ink);
+}
+
+.agent-avatar[data-appearance-version="1"] .agent-avatar__hair-line,
+.agent-avatar[data-appearance-version="1"] .agent-avatar__cap-line,
+.agent-avatar[data-appearance-version="1"] .agent-avatar__cap-brim {
+  stroke: var(--avatar-paper-deep);
+}
+
+.agent-avatar[data-appearance-version="1"] .agent-avatar__eye-white {
+  fill: #fffaf1;
 }
 
 .agent-avatar__mouth-rest,

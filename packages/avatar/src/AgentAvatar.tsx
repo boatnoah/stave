@@ -3,6 +3,7 @@ import { memo, useMemo, type CSSProperties } from "react";
 import { createAvatarIdentity } from "./engine/create-avatar-identity";
 import { getAvatarPalette } from "./engine/palettes";
 import { createAvatarGeometry } from "./geometry/create-avatar-geometry";
+import { LegacyAvatarV1 } from "./LegacyAvatarV1";
 import { getStatusExpression } from "./motion/status-expression";
 import { useAvatarReaction } from "./motion/use-avatar-reaction";
 import { Eyes } from "./parts/Eyes";
@@ -106,7 +107,14 @@ export const AgentAvatar = memo(function AgentAvatar({
       >
         <circle className="agent-avatar__paper" cx="32" cy="32" r="30" />
         <path className="agent-avatar__paper-echo" d="M9 19 C17 4 45 0 55 17" />
-        <g className="agent-avatar__presence">
+        {identity.appearanceVersion === 1 ? (
+          <LegacyAvatarV1
+            identity={identity}
+            mouth={expression.mouth}
+            browLift={expression.browLift}
+            gazeY={expression.gazeY}
+          />
+        ) : <g className="agent-avatar__presence">
           <g className="agent-avatar__offset" transform={`translate(${identity.faceOffsetX} 0)`}>
             <g className="agent-avatar__status-pose">
               <g className="agent-avatar__reaction-pose">
@@ -146,7 +154,7 @@ export const AgentAvatar = memo(function AgentAvatar({
               status={status}
             />
           </g>
-        </g>
+        </g>}
       </svg>
     </span>
   );
