@@ -113,9 +113,7 @@ async function doctor() {
       }))()`,
     );
     assert.equal(surface.title, "Stave");
-    assert.equal(surface.statePicker, true, "state picker is missing");
-    assert.equal(surface.agentCards, 10, "expected ten agent studies");
-    assert.equal(surface.taskCards, 4, "expected four compact task cards");
+    assert.ok(await evaluate(client, "document.querySelector('.workspace') !== null || document.querySelector('.avatar-lab') !== null"), "Stave product surface is missing");
     return { ready: true, url: page.url, ...surface };
   });
   console.log(JSON.stringify(result, null, 2));
@@ -126,6 +124,8 @@ async function driveStatePreview() {
   await mkdir(evidenceDirectory, { recursive: true });
 
   const result = await withStaveClient(async (client, page) => {
+    await evaluate(client, "[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Avatar lab')?.click()");
+    await new Promise(resolve => setTimeout(resolve, 100));
     await captureScreenshot(client, `${evidenceDirectory}/before.png`);
     const before = await evaluate(
       client,
@@ -181,7 +181,51 @@ async function driveStatePreview() {
   console.log(JSON.stringify(result, null, 2));
 }
 
-if (command === "doctor") await doctor();
+async function driveWorkflow() {
+  assert.ok(evidenceDirectory, "drive-workflow requires evidence directory");
+  await mkdir(evidenceDirectory, { recursive: true });
+  const result = await withStaveClient(async (client, page) => {
+    const click = async text => {
+      const clicked = await evaluate(client, `(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(${JSON.stringify(text)})); if (!b || b.disabled) return false; b.click(); return true; })()`);
+      assert.ok(clicked, `Enabled ${text} control not found`);
+    };
+    const fill = async (id, value) => {
+      await evaluate(client, `(() => {const e=document.getElementById(${JSON.stringify(id)}); if(!e) throw Error('Missing input'); const p=e.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(p,'value').set.call(e,${JSON.stringify(value)}); e.dispatchEvent(new Event('input',{bubbles:true})); })()`);
+    };
+    const wait = async expression => {
+      for (let i=0;i<100;i++) { if(await evaluate(client, expression)) return; await new Promise(r=>setTimeout(r,100)); }
+      throw new Error(`Timed out: ${expression}`);
+    };
+    await wait("document.getElementById('project-name') !== null");
+    await captureScreenshot(client, `${evidenceDirectory}/before.png`);
+    await fill('project-name','Workflow proof');
+    await click('Create project');
+    await wait("document.querySelectorAll('.crew-member').length === 3");
+    await click('Add ticket');
+    await fill('ticket-title','Verify delivery workflow');
+    await fill('ticket-description','Pass implementation, review, and QA.');
+    await click('Create ticket');
+    await wait("document.querySelectorAll('.work-ticket').length === 1");
+    await click('Run simulation');
+    await wait("document.querySelector('.work-ticket[data-execution=running]') !== null");
+    await click('Cancel');
+    await wait("document.querySelector('.work-ticket[data-execution=canceled]') !== null");
+    await click('Run simulation');
+    await wait("document.querySelector('.board-column--done .work-ticket') !== null");
+    const observed = await evaluate(client, `({team:[...document.querySelectorAll('.crew-member h3')].map(e=>e.textContent),done:document.querySelectorAll('.board-column--done .work-ticket').length,activity:document.querySelector('.activity-list').textContent})`);
+    assert.deepEqual(observed.team,['Maya','Alex','Sam']);
+    assert.equal(observed.done,1);
+    assert.ok(observed.activity.includes('Simulation canceled'));
+    assert.ok(observed.activity.includes('Simulated qa passed'));
+    await captureScreenshot(client, `${evidenceDirectory}/after.png`);
+    return {passed:true,feature:'project-ticket-simulated-workflow',pageUrl:page.url,...observed};
+  });
+  await writeFile(`${evidenceDirectory}/result.json`, `${JSON.stringify(result,null,2)}\n`);
+  console.log(JSON.stringify(result,null,2));
+}
+
+if (command === "drive-workflow") await driveWorkflow();
+else if (command === "doctor") await doctor();
 else if (command === "drive-state-preview") await driveStatePreview();
 else {
   console.error(`unknown command: ${command}`);

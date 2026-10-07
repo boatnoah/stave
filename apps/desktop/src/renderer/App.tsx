@@ -1,235 +1,728 @@
-import {
-  AgentAvatar,
-  avatarStatuses,
-  createAvatarIdentity,
-  type AvatarStatus,
-} from "@stave/avatar";
-import { useState } from "react";
+import { AgentAvatar, type AvatarStatus } from "@stave/avatar";
+import { useEffect, useReducer, useRef, useState, type FormEvent } from "react";
 
-interface DemoAgent {
-  readonly id: string;
-  readonly name: string;
-  readonly role: string;
-  readonly seed: string;
-  readonly status: AvatarStatus;
-  readonly activity: string;
+import type {
+  AgentSnapshot,
+  DesktopAgentRole,
+  TicketSnapshot,
+  WorkspaceSnapshot,
+} from "../shared/workspace-snapshot";
+import { AvatarLab } from "./AvatarLab";
+
+type WorkspaceState =
+  | { readonly status: "loading" }
+  | { readonly status: "error"; readonly message: string }
+  | { readonly status: "ready"; readonly snapshot: WorkspaceSnapshot };
+
+type WorkspaceAction =
+  | { readonly type: "snapshot"; readonly snapshot: WorkspaceSnapshot }
+  | { readonly type: "error"; readonly message: string }
+  | { readonly type: "retry" };
+
+function workspaceReducer(
+  state: WorkspaceState,
+  action: WorkspaceAction,
+): WorkspaceState {
+  switch (action.type) {
+    case "snapshot":
+      return state.status === "ready" &&
+        state.snapshot.revision > action.snapshot.revision
+        ? state
+        : { status: "ready", snapshot: action.snapshot };
+    case "error":
+      return state.status === "ready"
+        ? state
+        : { status: "error", message: action.message };
+    case "retry":
+      return { status: "loading" };
+  }
 }
 
-const agents: readonly DemoAgent[] = [
-  {
-    id: "inez",
-    name: "Inez",
-    role: "Product",
-    seed: "eye-7",
-    status: "working",
-    activity: "Thinking through the next decision",
-  },
-  {
-    id: "arlo",
-    name: "Arlo",
-    role: "Engineer",
-    seed: "eye-66",
-    status: "reviewing",
-    activity: "Reading the run history",
-  },
-  {
-    id: "suri",
-    name: "Suri",
-    role: "Reviewer",
-    seed: "eye-316",
-    status: "reviewing",
-    activity: "Checking the proposed diff",
-  },
-  {
-    id: "milo",
-    name: "Milo",
-    role: "Research",
-    seed: "eye-363",
-    status: "waiting",
-    activity: "Waiting on one decision",
-  },
-  {
-    id: "june",
-    name: "June",
-    role: "Design",
-    seed: "eye-292",
-    status: "idle",
-    activity: "Sketching the handoff",
-  },
-  {
-    id: "theo",
-    name: "Theo",
-    role: "Quality",
-    seed: "eye-263",
-    status: "done",
-    activity: "Verification passed",
-  },
-  {
-    id: "bea",
-    name: "Bea",
-    role: "Delivery",
-    seed: "eye-302",
-    status: "blocked",
-    activity: "Flagging a dependency",
-  },
-  {
-    id: "ren",
-    name: "Ren",
-    role: "Security",
-    seed: "eye-62",
-    status: "queued",
-    activity: "Ready for the next review",
-  },
-  {
-    id: "sol",
-    name: "Sol",
-    role: "Operations",
-    seed: "eye-148",
-    status: "failed",
-    activity: "A verification step failed",
-  },
-  {
-    id: "oda",
-    name: "Oda",
-    role: "Platform",
-    seed: "eye-205",
-    status: "working",
-    activity: "Muttering through a migration",
-  },
+const stages: readonly {
+  readonly id: TicketSnapshot["stage"];
+  readonly label: string;
+}[] = [
+  { id: "todo", label: "Todo" },
+  { id: "implementation", label: "Implementation" },
+  { id: "review", label: "Review" },
+  { id: "qa", label: "QA" },
+  { id: "done", label: "Done" },
 ];
 
-const stateDescriptions: Record<AvatarStatus, string> = {
-  idle: "A rare breath, blink, or uneven tilt.",
-  queued: "Thought dots gather, then settle.",
-  working: "Scan, mutter, consider, nod, then rest.",
-  reviewing: "A slow scan ends in a quiet hmm.",
-  waiting: "The mouth asks as a question mark appears.",
-  blocked: "A tangled thought and a long sigh.",
-  done: "A deliberate nod, wider smile, and two sparks.",
-  failed: "A small recoil, trembling mouth, and a restrained tear.",
+const roleLabels: Record<DesktopAgentRole, string> = {
+  tech_lead: "Tech lead",
+  engineer: "Engineer",
+  qa: "Quality assurance",
 };
 
-const titleCase = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
+const executionLabels: Record<TicketSnapshot["execution"], string> = {
+  ready: "Ready to start",
+  running: "Running",
+  succeeded: "Completed",
+  failed: "Failed",
+  canceled: "Canceled",
+  interrupted: "Interrupted",
+  waiting_capacity: "Queued",
+  waiting_user: "Needs your input",
+};
 
-export function App() {
-  const [stateOverride, setStateOverride] = useState<AvatarStatus | null>(null);
+function avatarStatus(ticket: TicketSnapshot | undefined): AvatarStatus {
+  if (!ticket) return "idle";
+  switch (ticket.execution) {
+    case "ready":
+      return "idle";
+    case "running":
+      return ticket.stage === "implementation" ? "working" : "reviewing";
+    case "succeeded":
+      return "done";
+    case "failed":
+      return "failed";
+    case "canceled":
+      return "idle";
+    case "interrupted":
+      return "blocked";
+    case "waiting_capacity":
+      return "queued";
+    case "waiting_user":
+      return "waiting";
+  }
+}
+
+function isActive(ticket: TicketSnapshot): boolean {
+  return (
+    ticket.execution === "running" ||
+    ticket.execution === "waiting_capacity" ||
+    ticket.execution === "waiting_user"
+  );
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error
+    ? error.message
+    : "Something went wrong. Please try again.";
+}
+
+function TeamMember({
+  agent,
+  tickets,
+}: {
+  readonly agent: AgentSnapshot;
+  readonly tickets: readonly TicketSnapshot[];
+}) {
+  const assigned = tickets.filter(
+    (ticket) => ticket.assignedAgentId === agent.id,
+  );
+  const ticket = assigned.find(isActive) ?? assigned.at(-1);
+  const status = agent.enabled ? avatarStatus(ticket) : "idle";
 
   return (
-    <main className="avatar-lab">
-      <header className="app-header">
-        <div className="wordmark">
-          <span>Stave</span>
-          <span className="wordmark__context">Avatar study 04</span>
+    <article
+      className="crew-member"
+      data-agent-id={agent.id}
+      data-agent-status={status}
+    >
+      <AgentAvatar
+        agentId={agent.id}
+        name={agent.displayName}
+        avatarSeed={agent.avatarSeed}
+        status={status}
+        size={78}
+      />
+      <div className="crew-member__copy">
+        <div className="crew-member__heading">
+          <h3>{agent.displayName}</h3>
+          <span
+            className={`presence presence--${status}`}
+            aria-label={status}
+          />
         </div>
-        <p className="app-header__note">Procedural SVG · no image assets</p>
-      </header>
-
-      <section className="intro" aria-labelledby="page-title">
-        <p className="eyebrow">Living crew</p>
-        <h1 id="page-title">The eyes should not share a mold.</h1>
-        <p className="intro__copy">
-          Ink beads, open buttons, pointed almonds, heavy lids, tall ovals, sleepy arcs, and one
-          deliberately uneven pair—all sharing a coherent gaze.
+        <p className="crew-member__role">{roleLabels[agent.role]}</p>
+        <p className="crew-member__activity">
+          {!agent.enabled
+            ? "Unavailable"
+            : ticket
+              ? `${executionLabels[ticket.execution]} · ${ticket.title}`
+              : "Ready for the next ticket"}
         </p>
-      </section>
+      </div>
+    </article>
+  );
+}
 
-      <nav className="state-picker" aria-label="Preview an avatar state">
+export function App() {
+  const [view, setView] = useState<"project" | "avatars">("project");
+  const [workspace, dispatch] = useReducer(workspaceReducer, {
+    status: "loading",
+  });
+  const [retry, setRetry] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const pendingRef = useRef(new Set<string>());
+  const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
+  const [projectName, setProjectName] = useState("");
+  const [repositoryPath, setRepositoryPath] = useState("");
+  const [ticketFormOpen, setTicketFormOpen] = useState(false);
+  const [ticketTitle, setTicketTitle] = useState("");
+  const [ticketDescription, setTicketDescription] = useState("");
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const ticketDialogRef = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = ticketDialogRef.current;
+    if (!dialog || view !== "project") return;
+    dialog.showModal();
+    return () => dialog.close();
+  }, [selectedTicketId, view]);
+
+  useEffect(() => {
+    let disposed = false;
+    let unsubscribe: (() => void) | undefined;
+    const accept = (snapshot: WorkspaceSnapshot) => {
+      if (!disposed) dispatch({ type: "snapshot", snapshot });
+    };
+    const fail = (cause: unknown) => {
+      if (!disposed) dispatch({ type: "error", message: errorMessage(cause) });
+    };
+    try {
+      unsubscribe = window.stave.events.subscribe((event) =>
+        accept(event.snapshot),
+      );
+      void window.stave.workspace.getSnapshot().then(accept, fail);
+    } catch (cause) {
+      fail(cause);
+    }
+    return () => {
+      disposed = true;
+      unsubscribe?.();
+    };
+  }, [retry]);
+
+  async function command(
+    key: string,
+    perform: () => Promise<WorkspaceSnapshot>,
+    onSuccess?: () => void,
+  ) {
+    if (pendingRef.current.has(key)) return;
+    pendingRef.current.add(key);
+    setPending(new Set(pendingRef.current));
+    setError(null);
+    try {
+      const snapshot = await perform();
+      dispatch({ type: "snapshot", snapshot });
+      onSuccess?.();
+    } catch (cause) {
+      setError(errorMessage(cause));
+    } finally {
+      pendingRef.current.delete(key);
+      setPending(new Set(pendingRef.current));
+    }
+  }
+
+  function createProject(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const path = repositoryPath.trim();
+    void command("project", () =>
+      window.stave.projects.create({
+        name: projectName.trim(),
+        ...(path ? { repositoryPath: path } : {}),
+      }),
+    );
+  }
+
+  function createTicket(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void command(
+      "ticket",
+      () =>
+        window.stave.tickets.create({
+          title: ticketTitle.trim(),
+          description: ticketDescription.trim(),
+        }),
+      () => {
+        setTicketTitle("");
+        setTicketDescription("");
+        setTicketFormOpen(false);
+      },
+    );
+  }
+
+  const snapshot = workspace.status === "ready" ? workspace.snapshot : null;
+  const project = snapshot?.project;
+  const selectedTicket = snapshot?.tickets.find(
+    (ticket) => ticket.id === selectedTicketId,
+  );
+  const completedCount =
+    snapshot?.tickets.filter((ticket) => ticket.stage === "done").length ?? 0;
+  const activeCount =
+    snapshot?.tickets.filter((ticket) => ticket.execution === "running")
+      .length ?? 0;
+
+  function runControls(ticket: TicketSnapshot) {
+    const busy = pending.has(ticket.id);
+    if (ticket.execution === "running") {
+      return (
         <button
-          className={stateOverride === null ? "is-active" : undefined}
           type="button"
-          onClick={() => setStateOverride(null)}
+          className="button button--small button--quiet"
+          disabled={busy}
+          onClick={() =>
+            void command(ticket.id, () =>
+              window.stave.runs.cancel({ ticketId: ticket.id }),
+            )
+          }
         >
-          Live mix
+          {busy ? "Canceling…" : "Cancel"}
         </button>
-        {avatarStatuses.map((status) => (
+      );
+    }
+    if (ticket.stage === "done")
+      return <span className="ticket-complete">✓ Complete</span>;
+    return (
+      <button
+        type="button"
+        className="button button--small"
+        disabled={busy}
+        onClick={() =>
+          void command(ticket.id, () =>
+            window.stave.runs.start({
+              ticketId: ticket.id,
+              mode: "simulation",
+            }),
+          )
+        }
+      >
+        {busy ? "Starting…" : "Run simulation"}
+        <span aria-hidden="true">↗</span>
+      </button>
+    );
+  }
+
+  return (
+    <>
+      <header className="product-header">
+        <a
+          className="brand"
+          href="#"
+          onClick={(event) => {
+            event.preventDefault();
+            setView("project");
+          }}
+          aria-label="Stave project"
+        >
+          <span className="brand__mark" aria-hidden="true">
+            s
+          </span>
+          stave
+          <span className="brand__subtitle">A little team. Real progress.</span>
+        </a>
+        <div className="product-header__actions">
+          <span className="local-label">
+            <span aria-hidden="true" />
+            Local workspace
+          </span>
           <button
-            className={stateOverride === status ? "is-active" : undefined}
-            key={status}
             type="button"
-            onClick={() => setStateOverride(status)}
+            className="text-button"
+            onClick={() => setView(view === "project" ? "avatars" : "project")}
           >
-            {titleCase(status)}
+            {view === "project" ? "Avatar lab" : "Back to project"}
           </button>
-        ))}
-      </nav>
-
-      <section className="agent-grid" aria-label="Agent avatar studies">
-        {agents.map((agent) => {
-          const status = stateOverride ?? agent.status;
-          const identity = createAvatarIdentity(agent.seed);
-
-          return (
-            <article className="agent-study" key={agent.id}>
-              <AgentAvatar
-                agentId={agent.id}
-                name={agent.name}
-                avatarSeed={agent.seed}
-                status={status}
-                size={112}
-              />
-              <div className="agent-study__identity">
-                <div>
-                  <h2>{agent.name}</h2>
-                  <p>{agent.role}</p>
+        </div>
+      </header>
+      {view === "avatars" ? (
+        <AvatarLab />
+      ) : (
+        <main className="workspace">
+          {error && (
+            <div className="notice notice--error" role="alert">
+              <p>{error}</p>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setError(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+          {workspace.status === "loading" && (
+            <section className="workspace-status" role="status">
+              <span className="loading-dot" />
+              <h1>Opening your workspace…</h1>
+              <p>Bringing your team and tickets together.</p>
+            </section>
+          )}
+          {workspace.status === "error" && (
+            <section className="workspace-status" role="alert">
+              <p className="eyebrow">Workspace unavailable</p>
+              <h1>Let's try that again.</h1>
+              <p>{workspace.message}</p>
+              <button
+                type="button"
+                className="button button--primary"
+                onClick={() => {
+                  dispatch({ type: "retry" });
+                  setRetry((value) => value + 1);
+                }}
+              >
+                Retry
+              </button>
+            </section>
+          )}
+          {snapshot && !project && (
+            <section className="welcome">
+              <div className="welcome__intro">
+                <p className="eyebrow">Your next project starts here</p>
+                <h1>
+                  Good work takes
+                  <br />a small team.
+                </h1>
+                <p>
+                  Give your project a home. Your engineer, tech lead, and QA
+                  teammate will help move each ticket from an idea to done.
+                </p>
+                <div className="welcome__footnote">
+                  <span className="simulation-badge">Simulation</span>
+                  <span>Try the delivery workflow with a simulated run.</span>
                 </div>
-                <span className="state-label">{titleCase(status)}</span>
               </div>
-              <p className="agent-study__traits">
-                {identity.headShape} · {identity.eyeStyle} eyes · {identity.hairStyle}
-              </p>
-              <p className="agent-study__activity">
-                {stateOverride ? stateDescriptions[status] : agent.activity}
-              </p>
-            </article>
-          );
-        })}
-      </section>
-
-      <section className="board-study" aria-labelledby="board-size-title">
-        <div className="section-heading">
-          <div>
-            <p className="eyebrow">Board size</p>
-            <h2 id="board-size-title">Quiet at 28 pixels</h2>
-          </div>
-          <p>Detail falls away; expression and state remain.</p>
-        </div>
-
-        <div className="mini-board">
-          {agents.slice(0, 4).map((agent, index) => {
-            const status = stateOverride ?? agent.status;
-            const tasks = [
-              "Define launch success metrics",
-              "Stream Codex run events",
-              "Prove retry behavior",
-              "Review the permissions boundary",
-            ] as const;
-
-            return (
-              <article className="task-card" key={agent.id}>
-                <div className="task-card__meta">
-                  <span>STV-{18 + index * 7}</span>
-                  <span>P{index === 0 ? 2 : 1}</span>
+              <form className="project-form" onSubmit={createProject}>
+                <p className="eyebrow">01 / Set up your workspace</p>
+                <h2>Make room for the work.</h2>
+                <label htmlFor="project-name">Project name</label>
+                <input
+                  id="project-name"
+                  value={projectName}
+                  onChange={(event) => setProjectName(event.target.value)}
+                  placeholder="Something worth building"
+                  required
+                  maxLength={120}
+                  disabled={pending.has("project")}
+                />
+                <label htmlFor="repository-path">
+                  Repository path <span>Optional</span>
+                </label>
+                <input
+                  id="repository-path"
+                  value={repositoryPath}
+                  onChange={(event) => setRepositoryPath(event.target.value)}
+                  placeholder="/Users/you/projects/your-project"
+                  disabled={pending.has("project")}
+                />
+                <p className="field-hint">
+                  Use an existing local Git repository, or leave this empty to
+                  explore.
+                </p>
+                <button
+                  className="button button--primary"
+                  type="submit"
+                  disabled={pending.has("project") || !projectName.trim()}
+                >
+                  {pending.has("project")
+                    ? "Creating project…"
+                    : "Create project"}
+                  <span aria-hidden="true">↗</span>
+                </button>
+              </form>
+            </section>
+          )}
+          {snapshot && project && (
+            <>
+              <section className="project-heading">
+                <div>
+                  <p className="eyebrow">Your workspace</p>
+                  <h1>{project.name}</h1>
+                  <p>
+                    {project.repositoryPath ??
+                      "A small team, ready to move your next idea forward."}
+                  </p>
                 </div>
-                <h3>{tasks[index]}</h3>
-                <div className="task-card__footer">
-                  <span className="task-card__agent">
-                    <AgentAvatar
-                      agentId={agent.id}
-                      name={agent.name}
-                      avatarSeed={agent.seed}
-                      status={status}
-                      size={28}
-                      decorative
-                    />
-                    <span>{agent.name}</span>
+                <div className="project-heading__summary">
+                  <span className="simulation-badge">Simulation</span>
+                  <div>
+                    <strong>
+                      {completedCount}
+                      <span> / {snapshot.tickets.length}</span>
+                    </strong>
+                    <span>tickets complete</span>
+                  </div>
+                </div>
+              </section>
+              <section className="crew" aria-label="Project team">
+                <div className="section-kicker">
+                  <h2>The team</h2>
+                  <span>
+                    {activeCount
+                      ? `${activeCount} ${activeCount === 1 ? "ticket" : "tickets"} in progress`
+                      : "Ready when you are"}
                   </span>
-                  <span>{titleCase(status)}</span>
                 </div>
-              </article>
-            );
-          })}
-        </div>
-      </section>
-    </main>
+                <div className="crew-grid">
+                  {project.agents.map((agent) => (
+                    <TeamMember
+                      key={agent.id}
+                      agent={agent}
+                      tickets={snapshot.tickets}
+                    />
+                  ))}
+                </div>
+              </section>
+              <section className="delivery" aria-labelledby="delivery-title">
+                <div className="delivery-heading">
+                  <div>
+                    <p className="eyebrow">One step at a time</p>
+                    <h2 id="delivery-title">The work ahead</h2>
+                  </div>
+                  <button
+                    type="button"
+                    className="button button--primary"
+                    onClick={() => setTicketFormOpen((open) => !open)}
+                    aria-expanded={ticketFormOpen}
+                    aria-controls="ticket-form"
+                  >
+                    {ticketFormOpen ? "Close ticket form" : "Add ticket"}
+                    <span aria-hidden="true">{ticketFormOpen ? "−" : "+"}</span>
+                  </button>
+                </div>
+                <p className="simulation-note">
+                  Simulation runs move tickets through implementation, review,
+                  and QA. They do not make code changes.
+                </p>
+                {ticketFormOpen && (
+                  <form
+                    id="ticket-form"
+                    className="ticket-form"
+                    onSubmit={createTicket}
+                  >
+                    <div>
+                      <label htmlFor="ticket-title">Ticket title</label>
+                      <input
+                        id="ticket-title"
+                        value={ticketTitle}
+                        onChange={(event) => setTicketTitle(event.target.value)}
+                        placeholder="What should the team work on?"
+                        required
+                        maxLength={200}
+                        autoFocus
+                        disabled={pending.has("ticket")}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="ticket-description">Description</label>
+                      <textarea
+                        id="ticket-description"
+                        value={ticketDescription}
+                        onChange={(event) =>
+                          setTicketDescription(event.target.value)
+                        }
+                        placeholder="Describe the outcome and how you'll know it's done."
+                        rows={3}
+                        disabled={pending.has("ticket")}
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="button button--primary"
+                      disabled={pending.has("ticket") || !ticketTitle.trim()}
+                    >
+                      {pending.has("ticket")
+                        ? "Creating ticket…"
+                        : "Create ticket"}
+                    </button>
+                  </form>
+                )}
+                <div className="delivery-board" aria-label="Ticket board">
+                  {stages.map((stage) => {
+                    const tickets = snapshot.tickets.filter(
+                      (ticket) => ticket.stage === stage.id,
+                    );
+                    return (
+                      <section
+                        className={`board-column board-column--${stage.id}`}
+                        key={stage.id}
+                        aria-label={stage.label}
+                      >
+                        <div className="board-column__heading">
+                          <h3>
+                            <span aria-hidden="true" />
+                            {stage.label}
+                          </h3>
+                          <span>{tickets.length}</span>
+                        </div>
+                        <div className="board-column__tickets">
+                          {tickets.length === 0 && (
+                            <div className="column-empty">
+                              {stage.id === "todo"
+                                ? "Your next idea goes here."
+                                : "Nothing here yet."}
+                            </div>
+                          )}
+                          {tickets.map((ticket) => {
+                            const agent = project.agents.find(
+                              (member) => member.id === ticket.assignedAgentId,
+                            );
+                            return (
+                              <article
+                                className="work-ticket"
+                                key={ticket.id}
+                                data-ticket-id={ticket.id}
+                                data-execution={ticket.execution}
+                              >
+                                <div className="work-ticket__meta">
+                                  <span
+                                    className={`execution-label execution-label--${ticket.execution}`}
+                                  >
+                                    {executionLabels[ticket.execution]}
+                                  </span>
+                                  <span className="work-ticket__mode">SIM</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  className="work-ticket__title"
+                                  onClick={() => setSelectedTicketId(ticket.id)}
+                                  aria-label={`View details: ${ticket.title}`}
+                                >
+                                  {ticket.title}
+                                </button>
+                                {ticket.description && (
+                                  <p className="work-ticket__description">
+                                    {ticket.description}
+                                  </p>
+                                )}
+                                <div className="work-ticket__assignee">
+                                  {agent ? (
+                                    <>
+                                      <AgentAvatar
+                                        agentId={agent.id}
+                                        name={agent.displayName}
+                                        avatarSeed={agent.avatarSeed}
+                                        status={avatarStatus(ticket)}
+                                        size={26}
+                                        decorative
+                                      />
+                                      <span>{agent.displayName}</span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span
+                                        className="unassigned-mark"
+                                        aria-hidden="true"
+                                      >
+                                        ○
+                                      </span>
+                                      <span>Unassigned</span>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="work-ticket__actions">
+                                  {runControls(ticket)}
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
+                  })}
+                </div>
+              </section>
+              <section className="activity" aria-labelledby="activity-title">
+                <div className="section-kicker">
+                  <h2 id="activity-title">Recent activity</h2>
+                  <span>Recorded in this workspace</span>
+                </div>
+                {snapshot.activity.length ? (
+                  <ol className="activity-list">
+                    {snapshot.activity
+                      .slice()
+                      .reverse()
+                      .slice(0, 12)
+                      .map((entry) => (
+                        <li key={entry.id}>
+                          <span
+                            className="activity-list__dot"
+                            aria-hidden="true"
+                          />
+                          <p>{entry.message}</p>
+                          <time dateTime={entry.createdAt}>
+                            {new Date(entry.createdAt).toLocaleTimeString([], {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </time>
+                        </li>
+                      ))}
+                  </ol>
+                ) : (
+                  <p className="activity-empty">
+                    The story starts with your first ticket.
+                  </p>
+                )}
+              </section>
+            </>
+          )}
+          <footer className="workspace-footer">
+            <span>Stave · Thoughtful work, together.</span>
+            <span>This session</span>
+          </footer>
+        </main>
+      )}
+      {view === "project" && selectedTicket && (
+        <dialog
+          ref={ticketDialogRef}
+          className="ticket-detail"
+          aria-labelledby="ticket-detail-title"
+          onCancel={() => setSelectedTicketId(null)}
+        >
+          <div className="ticket-detail__heading">
+            <span className="simulation-badge">Simulation</span>
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => setSelectedTicketId(null)}
+            >
+              Close details
+            </button>
+          </div>
+          <p className="eyebrow">
+            {stages.find((stage) => stage.id === selectedTicket.stage)?.label} ·{" "}
+            {executionLabels[selectedTicket.execution]}
+          </p>
+          <h2 id="ticket-detail-title">{selectedTicket.title}</h2>
+          <p className="ticket-detail__description">
+            {selectedTicket.description || "No description added."}
+          </p>
+          {selectedTicket.workspace && (
+            <dl className="ticket-workspace">
+              <dt>Workspace</dt>
+              <dd>{selectedTicket.workspace.path}</dd>
+              <dt>Branch</dt>
+              <dd>{selectedTicket.workspace.branch}</dd>
+              <dt>Changes</dt>
+              <dd>
+                {selectedTicket.workspace.dirty
+                  ? "Uncommitted changes"
+                  : "Clean"}
+              </dd>
+            </dl>
+          )}
+          <div className="ticket-detail__controls">
+            {runControls(selectedTicket)}
+          </div>
+          <h3>Run output</h3>
+          <pre className="run-output" aria-live="polite">
+            {selectedTicket.output ||
+              "Run this ticket to see the team's progress here."}
+          </pre>
+          <h3>Ticket activity</h3>
+          <ol className="ticket-activity">
+            {snapshot?.activity
+              .filter((entry) => entry.ticketId === selectedTicket.id)
+              .map((entry) => (
+                <li key={entry.id}>{entry.message}</li>
+              ))}
+          </ol>
+        </dialog>
+      )}
+    </>
   );
 }

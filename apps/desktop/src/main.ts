@@ -14,10 +14,12 @@ const trustedRenderers = new Map<number, string>();
 registerStaveIpc({
   ipcMain,
   application: staveApplication,
-  isTrustedSender: (event) => event.senderFrame === event.sender.mainFrame &&
+  isTrustedSender: (event) =>
+    event.senderFrame === event.sender.mainFrame &&
     event.senderFrame?.url === trustedRenderers.get(event.sender.id),
   sendToRenderers: (channel, event) => {
-    for (const window of BrowserWindow.getAllWindows()) window.webContents.send(channel, event);
+    for (const window of BrowserWindow.getAllWindows())
+      window.webContents.send(channel, event);
   },
 });
 
@@ -46,8 +48,16 @@ function createMainWindow(): BrowserWindow {
     }
   });
 
-  const rendererFile = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`);
-  trustedRenderers.set(window.webContents.id, MAIN_WINDOW_VITE_DEV_SERVER_URL ? new URL(MAIN_WINDOW_VITE_DEV_SERVER_URL).href : pathToFileURL(rendererFile).href);
+  const rendererFile = path.join(
+    __dirname,
+    `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`,
+  );
+  trustedRenderers.set(
+    window.webContents.id,
+    MAIN_WINDOW_VITE_DEV_SERVER_URL
+      ? new URL(MAIN_WINDOW_VITE_DEV_SERVER_URL).href
+      : pathToFileURL(rendererFile).href,
+  );
   const rendererId = window.webContents.id;
   window.on("closed", () => trustedRenderers.delete(rendererId));
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
@@ -74,4 +84,12 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
+});
+
+let quitting = false;
+app.on("before-quit", (event) => {
+  if (quitting) return;
+  event.preventDefault();
+  quitting = true;
+  void staveApplication.shutdown().finally(() => app.quit());
 });

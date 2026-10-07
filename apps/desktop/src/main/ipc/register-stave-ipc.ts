@@ -1,6 +1,12 @@
 import type { IpcMain, IpcMainInvokeEvent } from "electron";
 
-import { ipcChannels, parseCreateProjectRequest } from "../../shared/ipc-contract";
+import {
+  ipcChannels,
+  parseCreateProjectRequest,
+  parseCreateTicketRequest,
+  parseStartRunRequest,
+  parseTicketRequest,
+} from "../../shared/ipc-contract";
 import type { WorkspaceEvent } from "../../shared/workspace-snapshot";
 import type { StaveApplication } from "../application/stave-application";
 
@@ -11,7 +17,12 @@ interface RegisterStaveIpcInput {
   readonly isTrustedSender: (event: IpcMainInvokeEvent) => boolean;
 }
 
-export function registerStaveIpc({ ipcMain, application, sendToRenderers, isTrustedSender }: RegisterStaveIpcInput): () => void {
+export function registerStaveIpc({
+  ipcMain,
+  application,
+  sendToRenderers,
+  isTrustedSender,
+}: RegisterStaveIpcInput): () => void {
   const authorize = (event: IpcMainInvokeEvent) => {
     if (!isTrustedSender(event)) throw new Error("Untrusted Stave request");
   };
@@ -23,11 +34,28 @@ export function registerStaveIpc({ ipcMain, application, sendToRenderers, isTrus
     authorize(event);
     return application.createProject(parseCreateProjectRequest(request));
   });
-  const unsubscribe = application.subscribe((event) => sendToRenderers(ipcChannels.workspaceEvent, event));
+  ipcMain.handle(ipcChannels.createTicket, (event, request: unknown) => {
+    authorize(event);
+    return application.createTicket(parseCreateTicketRequest(request));
+  });
+  ipcMain.handle(ipcChannels.startRun, (event, request: unknown) => {
+    authorize(event);
+    return application.startRun(parseStartRunRequest(request));
+  });
+  ipcMain.handle(ipcChannels.cancelRun, (event, request: unknown) => {
+    authorize(event);
+    return application.cancelRun(parseTicketRequest(request));
+  });
+  const unsubscribe = application.subscribe((event) =>
+    sendToRenderers(ipcChannels.workspaceEvent, event),
+  );
 
   return () => {
     unsubscribe();
     ipcMain.removeHandler(ipcChannels.getWorkspaceSnapshot);
     ipcMain.removeHandler(ipcChannels.createProject);
+    ipcMain.removeHandler(ipcChannels.createTicket);
+    ipcMain.removeHandler(ipcChannels.startRun);
+    ipcMain.removeHandler(ipcChannels.cancelRun);
   };
 }
