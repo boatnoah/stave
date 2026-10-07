@@ -9,16 +9,17 @@
     "package": "electron-forge package",
     "make": "electron-forge make",
     "test": "vitest run --passWithNoTests",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@stave/agent-runtime": "workspace:*",
     "@stave/avatar": "workspace:*",
-    "@stave/domain": "workspace:*",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
     "@stave/db": "workspace:*",
-    "@stave/git-workspace": "workspace:*"
+    "@stave/domain": "workspace:*",
+    "@stave/git-workspace": "workspace:*",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@electron-forge/cli": "8.0.0-alpha.10",
@@ -27,6 +28,7 @@
     "@electron-forge/plugin-vite": "8.0.0-alpha.10",
     "@electron-forge/shared-types": "8.0.0-alpha.10",
     "@electron/fuses": "^2.1.3",
+    "@playwright/test": "1.63.0",
     "@types/node": "^26.2.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",

@@ -64,6 +64,57 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "apps/desktop/src/renderer/**",
+        "apps/desktop/src/shared/**",
+        "packages/domain/src/**",
+        "packages/avatar/src/**"
+      ],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noNodejsModules": "error"
+          },
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@stave/db": "Only the desktop main process may use the database.",
+                  "@stave/git-workspace": "Only the desktop main process may manage Git workspaces.",
+                  "@stave/agent-runtime": "Only the desktop main process may run agents.",
+                  "electron": "Only the main process and preload may import Electron."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "includes": ["packages/**"],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "paths": {
+                  "@stave/desktop": "Packages must not depend on the desktop app."
+                },
+                "patterns": [
+                  {
+                    "group": ["**/apps/**"],
+                    "message": "Packages must not depend on the desktop app."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "assist": {

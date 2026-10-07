@@ -11,13 +11,19 @@
     "lint:fix": "biome check --write .",
     "test": "pnpm --recursive test",
     "typecheck": "pnpm --recursive typecheck",
-    "verify": "biome ci --error-on-warnings . && pnpm typecheck && pnpm test",
+    "verify": "biome ci --error-on-warnings . && pnpm typecheck && pnpm test && knip",
     "check": "pnpm verify",
-    "prepare": "lefthook install"
+    "prepare": "lefthook install",
+    "test:coverage": "vitest run --coverage --config vitest.coverage.config.mts",
+    "e2e": "pnpm --filter @stave/desktop package && pnpm --filter @stave/desktop e2e",
+    "knip": "knip"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "lefthook": "2.1.17"
+    "@vitest/coverage-v8": "4.1.10",
+    "knip": "6.40.0",
+    "lefthook": "2.1.17",
+    "vitest": "4.1.10"
   },
   "engines": {
     "node": ">=24"
