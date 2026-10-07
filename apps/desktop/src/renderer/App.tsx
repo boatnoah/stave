@@ -62,7 +62,7 @@ const executionLabels: Record<TicketSnapshot["execution"], string> = {
   failed: "Failed",
   canceled: "Canceled",
   interrupted: "Interrupted",
-  waiting_capacity: "Queued",
+  waiting_capacity: "Waiting for capacity",
   waiting_user: "Needs your input",
 };
 
@@ -277,6 +277,7 @@ export function App() {
   const selectedTicket = snapshot?.tickets.find(
     (ticket) => ticket.id === selectedTicketId,
   );
+  const selectedRun = snapshot?.runs.find((run) => run.id === selectedTicket?.runId);
   const completedCount =
     snapshot?.tickets.filter((ticket) => ticket.stage === "done").length ?? 0;
   const activeCount =
@@ -311,29 +312,28 @@ export function App() {
     }
     if (ticket.stage === "done")
       return <span className="ticket-complete">✓ Complete</span>;
+    const modes: readonly TicketSnapshot["mode"][] = project?.repositoryPath
+      ? ["codex", "simulation"]
+      : ["simulation"];
     return (
-      <button
-        type="button"
-        className="button button--small"
-        disabled={
-          busy || preparingTicketId !== null || pending.has("repository")
-        }
-        onClick={() =>
-          void command(ticket.id, () =>
-            window.stave.runs.start({
-              ticketId: ticket.id,
-              mode: "simulation",
-            }),
-          )
-        }
-      >
-        {preparingTicketId === ticket.id
-          ? "Preparing…"
-          : busy
-            ? "Starting…"
-            : "Run simulation"}
-        <span aria-hidden="true">↗</span>
-      </button>
+      <div className="run-options">
+        {modes.filter((mode) => ticket.runId === null || ticket.mode === mode).map((mode) => (
+          <button
+            key={mode}
+            type="button"
+            className={`button button--small ${mode === "codex" ? "button--primary" : "button--quiet"}`}
+            disabled={busy || preparingTicketId !== null || pending.has("repository") || activeCount > 0}
+            onClick={() => void command(ticket.id, () => window.stave.runs.start({ ticketId: ticket.id, mode }))}
+          >
+            {preparingTicketId === ticket.id
+              ? "Preparing…"
+              : busy
+                ? "Starting…"
+                : mode === "codex" ? "Run Codex" : "Run simulation"}
+            <span aria-hidden="true">↗</span>
+          </button>
+        ))}
+      </div>
     );
   }
 
@@ -560,8 +560,9 @@ export function App() {
                   </button>
                 </div>
                 <p className="simulation-note">
-                  Simulation runs move tickets through implementation, review,
-                  and QA. They do not make code changes.
+                  {project.repositoryPath
+                    ? "Codex makes local code changes in an isolated workspace and does not push. Simulation runs preview the workflow without code changes."
+                    : "Simulation runs preview implementation, review, and QA without code changes. Connect a repository to run Codex."}
                 </p>
                 {ticketFormOpen && (
                   <form
@@ -649,7 +650,9 @@ export function App() {
                                   >
                                     {executionLabels[ticket.execution]}
                                   </span>
-                                  <span className="work-ticket__mode">SIM</span>
+                                  <span className={`work-ticket__mode work-ticket__mode--${ticket.mode}`}>
+                                    {ticket.mode === "codex" ? "CODEX" : "SIM"}
+                                  </span>
                                 </div>
                                 <button
                                   type="button"
@@ -750,7 +753,9 @@ export function App() {
           onCancel={() => setSelectedTicketId(null)}
         >
           <div className="ticket-detail__heading">
-            <span className="simulation-badge">Simulation</span>
+            <span className={`simulation-badge ${selectedTicket.mode === "codex" ? "simulation-badge--codex" : ""}`}>
+              {selectedTicket.mode === "codex" ? "Codex" : "Simulation"}
+            </span>
             <button
               type="button"
               className="text-button"
@@ -767,6 +772,12 @@ export function App() {
           <p className="ticket-detail__description">
             {selectedTicket.description || "No description added."}
           </p>
+          {selectedRun?.summary && (
+            <div className={`run-result run-result--${selectedTicket.execution}`} role="status">
+              <h3>{stages.find((stage) => stage.id === selectedRun.stage)?.label} · {executionLabels[selectedRun.state]}</h3>
+              <p>{selectedRun.summary}</p>
+            </div>
+          )}
           {error && (
             <div className="notice notice--error" role="alert">
               <p>{error}</p>
@@ -799,7 +810,7 @@ export function App() {
               <p>
                 {selectedTicket.workspace
                   ? "Refresh to check the branch and any uncommitted changes."
-                  : "Prepare an isolated Git workspace for this ticket. Simulation runs leave its files unchanged."}
+                  : "Prepare a workspace now, or let Run Codex prepare it automatically."}
               </p>
               <button
                 type="button"
@@ -828,6 +839,15 @@ export function App() {
           )}
           <div className="ticket-detail__controls">
             {runControls(selectedTicket)}
+            {project?.repositoryPath && selectedTicket.stage !== "done" && (
+              <p className="workspace-preparation__hint">
+                {selectedTicket.runId !== null
+                  ? selectedTicket.mode === "codex"
+                    ? "Continue with Codex in this ticket's workspace. Changes stay local and are not pushed."
+                    : "This ticket uses simulation. Create another ticket to make code changes with Codex."
+                  : "Run Codex makes local code changes in this ticket's isolated workspace. Changes are not pushed."}
+              </p>
+            )}
           </div>
           <h3>Run output</h3>
           <pre className="run-output" aria-live="polite">

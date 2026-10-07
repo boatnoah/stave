@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@stave/agent-runtime": "workspace:*",
     "@stave/avatar": "workspace:*",
     "@stave/domain": "workspace:*",
     "react": "^19.2.8",

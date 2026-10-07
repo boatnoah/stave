@@ -494,6 +494,47 @@ button:disabled {
   height: 4px;
   width: 4px;
 }
+.simulation-badge--codex {
+  background: #e3e9d9;
+  border-color: #7d916133;
+  color: #66744e;
+}
+.run-options {
+  display: grid;
+  gap: 7px;
+}
+.ticket-detail__controls .run-options {
+  display: flex;
+  flex-wrap: wrap;
+}
+.run-result {
+  background: #ece7da;
+  border-left: 2px solid #a19780;
+  border-radius: 0 6px 6px 0;
+  margin: 20px 0;
+  padding: 13px 16px;
+}
+.run-result.run-result--failed,
+.run-result.run-result--interrupted {
+  background: #f1e5da;
+  border-left-color: #b78266;
+}
+.run-result.run-result--waiting_capacity,
+.run-result.run-result--waiting_user {
+  background: #eee6d3;
+  border-left-color: #b99d68;
+}
+.ticket-detail .run-result h3 {
+  margin: 0 0 8px;
+}
+.run-result p {
+  color: #807361;
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
 .project-heading {
   align-items: flex-end;
   display: flex;
@@ -750,6 +791,10 @@ button:disabled {
   font-size: 7px;
   letter-spacing: 0.08em;
   padding: 2px 3px;
+}
+.work-ticket__mode--codex {
+  background: #edf0e6;
+  color: #7b8668;
 }
 .work-ticket__title {
   background: none;

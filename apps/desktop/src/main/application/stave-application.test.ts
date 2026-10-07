@@ -178,6 +178,50 @@ describe("StaveApplication", () => {
     expect(app.getSnapshot().tickets[0]?.stage).toBe("review");
     expect(app.getSnapshot().runs).toHaveLength(2);
   });
+  it("prepares a workspace for Codex and runs every stage inside it", async () => {
+    const workspace = { path: "/work/a", branch: "stave/ticket/a", dirty: false };
+    const provider = vi.fn(async () => workspace);
+    const cwds: (string | undefined)[] = [];
+    const simulation = vi.fn<StageRunner>();
+    const app = new StaveApplication(simulation, undefined, undefined, provider, async ({ ticket }) => {
+      cwds.push(ticket.workspace?.path);
+      return { state: "succeeded", summary: "Passed" };
+    });
+    app.createProject({ name: "Codex", repositoryPath: "/repo" });
+    const ticket = app.createTicket({ title: "Ticket", description: "" }).tickets[0];
+    if (!ticket) throw new Error("Missing ticket");
+    app.startRun({ ticketId: ticket.id, mode: "codex" });
+    await vi.waitFor(() => expect(app.getSnapshot().tickets[0]?.stage).toBe("done"));
+    expect(cwds).toEqual(["/work/a", "/work/a", "/work/a"]);
+    expect(simulation).not.toHaveBeenCalled();
+    expect(app.getSnapshot().tickets[0]).toMatchObject({ mode: "codex", workspace });
+    expect(parseWorkspaceSnapshot(app.getSnapshot())).toEqual(app.getSnapshot());
+  });
+  it("keeps a ticket on the mode it started with", async () => {
+    const { app, ticket } = setup(async () => ({ state: "failed", summary: "No" }));
+    expect(() => app.startRun({ ticketId: ticket.id, mode: "codex" })).toThrow("unavailable");
+    app.startRun({ ticketId: ticket.id, mode: "simulation" });
+    await vi.waitFor(() => expect(app.getSnapshot().tickets[0]?.execution).toBe("failed"));
+    expect(() => app.startRun({ ticketId: ticket.id, mode: "codex" })).toThrow("already uses simulation");
+  });
+  it("fails a Codex run without touching earlier runs when preparation fails", async () => {
+    const app = new StaveApplication(undefined, undefined, undefined, async () => {
+      throw new Error("Invalid repository");
+    }, vi.fn<StageRunner>());
+    app.createProject({ name: "Codex", repositoryPath: "/repo" });
+    const ticket = app.createTicket({ title: "Ticket", description: "" }).tickets[0];
+    if (!ticket) throw new Error("Missing ticket");
+    app.startRun({ ticketId: ticket.id, mode: "codex" });
+    await vi.waitFor(() => expect(app.getSnapshot().tickets[0]?.execution).toBe("failed"));
+    expect(app.getSnapshot().runs).toEqual([]);
+    expect(app.getSnapshot().activity.at(-1)?.message).toBe("Invalid repository");
+  });
+  it("reads tickets saved before run modes as simulations", () => {
+    const { app } = setup();
+    const { mode: _mode, ...legacy } = app.getSnapshot().tickets[0]!;
+    const parsed = parseWorkspaceSnapshot({ ...app.getSnapshot(), tickets: [legacy] });
+    expect(parsed.tickets[0]?.mode).toBe("simulation");
+  });
   it("protects internal state from snapshot mutation", () => {
     const { app } = setup();
     Object.assign(app.getSnapshot().tickets[0] ?? {}, { stage: "done" });

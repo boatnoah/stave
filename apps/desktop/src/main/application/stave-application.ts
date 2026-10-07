@@ -10,6 +10,7 @@ import type {
 import type {
   AgentSnapshot,
   ExecutionState,
+  RunMode,
   RunSnapshot,
   TicketSnapshot,
   WorkspaceEvent,
@@ -79,6 +80,7 @@ export class StaveApplication {
   readonly #store: StaveStore | undefined;
   readonly #onFatalError: (error: unknown) => void;
   readonly #workspaceProvider: WorkspaceProvider | undefined;
+  readonly #codexRunner: StageRunner | undefined;
   #preparing: Promise<WorkspaceSnapshot> | null = null;
   #active: {
     ticketId: string;
@@ -92,7 +94,9 @@ export class StaveApplication {
     onFatalError: (error: unknown) => void = (error) =>
       console.error("Stave storage failure", error),
     workspaceProvider?: WorkspaceProvider,
+    codexRunner?: StageRunner,
   ) {
+    this.#codexRunner = codexRunner;
     this.#workspaceProvider = workspaceProvider;
     this.#onFatalError = onFatalError;
     this.#runner = runner;
@@ -236,6 +240,7 @@ export class StaveApplication {
       description: request.description.trim(),
       stage: "todo",
       execution: "ready",
+      mode: "simulation",
       assignedAgentId: null,
       runId: null,
       output: "",
@@ -261,10 +266,20 @@ export class StaveApplication {
       if (!project.agents.some((agent) => agent.enabled && agent.role === role))
         throw new Error(`No enabled ${role} agent`);
     }
+    if (ticket.runId !== null && ticket.mode !== request.mode)
+      throw new Error(
+        `This ticket already uses ${ticket.mode === "codex" ? "Codex" : "simulation"}`,
+      );
+    if (request.mode === "codex") {
+      if (!project.repositoryPath)
+        throw new Error("Set a repository path before running Codex");
+      if (!this.#codexRunner || !this.#workspaceProvider)
+        throw new Error("Codex runs are unavailable");
+    }
     const controller = new AbortController();
     const active = { ticketId: ticket.id, controller, done: Promise.resolve() };
     this.#active = active;
-    active.done = this.#execute(ticket.id, controller)
+    active.done = this.#execute(ticket.id, request.mode, controller)
       .catch((error) => this.#onFatalError(error))
       .finally(() => {
         if (this.#active === active) this.#active = null;
@@ -297,8 +312,30 @@ export class StaveApplication {
     };
   }
 
-  async #execute(ticketId: string, controller: AbortController): Promise<void> {
+  async #execute(
+    ticketId: string,
+    mode: RunMode,
+    controller: AbortController,
+  ): Promise<void> {
+    const runner =
+      mode === "codex" ? this.#codexRunner : this.#runner;
+    let runId: string | null = null;
     try {
+      if (!runner) throw new Error("Codex runs are unavailable");
+      if (mode === "codex" && !this.#ticket(ticketId).workspace) {
+        const workspace = await this.#refreshWorkspace(ticketId);
+        if (!workspace) throw new Error("Git workspaces are unavailable");
+        this.#change(
+          {
+            ...this.#snapshot,
+            tickets: this.#snapshot.tickets.map((ticket) =>
+              ticket.id === ticketId ? { ...ticket, workspace } : ticket,
+            ),
+          },
+          ticketId,
+          `Workspace ready on ${workspace.branch}${workspace.dirty ? "; unfinished changes preserved" : ""}`,
+        );
+      }
       const initialStage = this.#ticket(ticketId).stage;
       const first =
         initialStage === "todo"
@@ -318,6 +355,7 @@ export class StaveApplication {
           state: "running",
           summary: "",
         };
+        runId = run.id;
         this.#change(
           {
             ...this.#snapshot,
@@ -327,6 +365,7 @@ export class StaveApplication {
                     ...ticket,
                     stage,
                     execution: "running",
+                    mode,
                     runId: run.id,
                     assignedAgentId: agent.id,
                   }
@@ -335,9 +374,11 @@ export class StaveApplication {
             runs: [...this.#snapshot.runs, run],
           },
           ticketId,
-          `${agent.displayName} started simulated ${stage}`,
+          mode === "codex"
+            ? `${agent.displayName} started ${stage} with Codex`
+            : `${agent.displayName} started simulated ${stage}`,
         );
-        const outcome = await this.#runner({
+        const outcome = await runner({
           ticket: this.#ticket(ticketId),
           stage,
           agent,
@@ -350,6 +391,10 @@ export class StaveApplication {
           },
         });
         const state = controller.signal.aborted ? "canceled" : outcome.state;
+        const workspace =
+          mode === "codex"
+            ? await this.#refreshWorkspace(ticketId).catch(() => null)
+            : null;
         this.#change(
           {
             ...this.#snapshot,
@@ -358,6 +403,7 @@ export class StaveApplication {
                 ? {
                     ...ticket,
                     execution: state,
+                    workspace: workspace ?? ticket.workspace,
                     stage:
                       state === "succeeded" && stage === "qa" ? "done" : stage,
                   }
@@ -376,7 +422,6 @@ export class StaveApplication {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Run failed";
-      const ticket = this.#ticket(ticketId);
       this.#change(
         {
           ...this.#snapshot,
@@ -386,7 +431,7 @@ export class StaveApplication {
               : candidate,
           ),
           runs: this.#snapshot.runs.map((run) =>
-            run.id === ticket.runId
+            run.id === runId
               ? { ...run, state: "failed", summary: message }
               : run,
           ),
@@ -395,6 +440,14 @@ export class StaveApplication {
         message,
       );
     }
+  }
+
+  async #refreshWorkspace(
+    ticketId: string,
+  ): Promise<TicketSnapshot["workspace"]> {
+    const repositoryPath = this.#snapshot.project?.repositoryPath;
+    if (!repositoryPath || !this.#workspaceProvider) return null;
+    return this.#workspaceProvider({ repositoryPath, ticketId });
   }
 
   #ticket(id: string): TicketSnapshot {

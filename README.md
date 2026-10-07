@@ -9,12 +9,16 @@ The first vertical slice is intentionally small: a secure Electron shell and a p
 ```text
 apps/desktop/          Electron main, preload, and React renderer
 packages/avatar/       Browser-safe procedural SVG avatar system
+packages/domain/       Project, team, and workflow vocabulary
+packages/db/           SQLite workspace store
+packages/git-workspace/ Isolated Git worktrees per ticket
+packages/agent-runtime/ Codex app-server adapter
 assets/design/board/   Product mockups and visual references
 assets/avatars/        Editable sources, references, and local exports
 docs/architecture/     Architectural boundaries and decisions
 ```
 
-Future orchestrator, provider, and persistence packages will be added only when their first vertical slice is implemented.
+Codex runs use your existing `codex` CLI sign-in. They make local changes in a per-ticket worktree and never push.
 
 ## Development
 

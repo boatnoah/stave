@@ -14,22 +14,27 @@ The avatar package has no Electron dependency. It owns deterministic identity ge
 
 The domain package owns project, agent, team-template, ticket-workflow, and run-state vocabulary. It has no Electron or Node.js dependency. The default software-delivery template creates Maya, Alex, and Sam when a project starts, while the project factory also accepts other versioned templates.
 
+### `packages/agent-runtime`
+
+The agent runtime runs one task through the local `codex app-server` process. It has no Electron dependency and owns the protocol, sandbox policy, cancellation, and result classification. See [the Codex runtime spec](../specs/codex-runtime.md).
+
+### `packages/db`
+
+The database package owns the SQLite workspace store and its journal.
+
+### `packages/git-workspace`
+
+The Git workspace package creates and reuses one isolated worktree per ticket.
+
 ### `assets`
 
 `assets/design/board` contains our own product mockups. `assets/avatars/references` contains provenance notes for outside inspiration. `assets/avatars/source` is reserved for editable originals if the procedural system later gains authored paths. Generated previews go to `assets/avatars/exports` and are ignored by default.
 
-## Planned boundaries
-
-The following packages are expected, but should not be created until a working slice needs them:
-
-- `agent-runtime`: the provider contract and Codex app-server adapter.
-- `db`: SQLite schema, migrations, and repositories.
-- `git-workspace`: safe Git worktree lifecycle management.
-
-This avoids empty architecture while preserving clear dependency direction:
+## Dependency direction
 
 ```text
 desktop renderer -> domain + avatar
 desktop main -> domain + agent-runtime + db + git-workspace
-agent-runtime + db + git-workspace -> domain
 ```
+
+The desktop main process chooses a stage runner per ticket. Simulation tickets use an in-process timer. Codex tickets get an isolated workspace before their first stage, and each stage runs Codex inside that workspace with a stage-specific prompt. A ticket keeps the mode its first run used.
