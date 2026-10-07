@@ -32,15 +32,63 @@ interface EyeMetrics {
 const eyeMetrics: Record<EyeStyle, EyeMetrics> = {
   round: { radiusX: 3.05, radiusY: 3.05, pupilScale: 1, gazeX: 1, gazeY: 1 },
   soft: { radiusX: 3.35, radiusY: 2.6, pupilScale: 1, gazeX: 1, gazeY: 0.8 },
-  wide: { radiusX: 3.85, radiusY: 3.45, pupilScale: 0.9, gazeX: 1.05, gazeY: 0.9 },
-  almond: { radiusX: 3.8, radiusY: 2.15, pupilScale: 0.88, gazeX: 0.9, gazeY: 0.42 },
-  small: { radiusX: 2.55, radiusY: 2.35, pupilScale: 0.9, gazeX: 0.75, gazeY: 0.7 },
-  bead: { radiusX: 1.65, radiusY: 1.65, pupilScale: 1.15, gazeX: 0.42, gazeY: 0.36 },
-  button: { radiusX: 3.2, radiusY: 3.2, pupilScale: 1.2, gazeX: 0.86, gazeY: 0.84 },
-  sleepy: { radiusX: 3.65, radiusY: 1.75, pupilScale: 0.76, gazeX: 0.84, gazeY: 0.25 },
+  wide: {
+    radiusX: 3.85,
+    radiusY: 3.45,
+    pupilScale: 0.9,
+    gazeX: 1.05,
+    gazeY: 0.9,
+  },
+  almond: {
+    radiusX: 3.8,
+    radiusY: 2.15,
+    pupilScale: 0.88,
+    gazeX: 0.9,
+    gazeY: 0.42,
+  },
+  small: {
+    radiusX: 2.55,
+    radiusY: 2.35,
+    pupilScale: 0.9,
+    gazeX: 0.75,
+    gazeY: 0.7,
+  },
+  bead: {
+    radiusX: 1.65,
+    radiusY: 1.65,
+    pupilScale: 1.15,
+    gazeX: 0.42,
+    gazeY: 0.36,
+  },
+  button: {
+    radiusX: 3.2,
+    radiusY: 3.2,
+    pupilScale: 1.2,
+    gazeX: 0.86,
+    gazeY: 0.84,
+  },
+  sleepy: {
+    radiusX: 3.65,
+    radiusY: 1.75,
+    pupilScale: 0.76,
+    gazeX: 0.84,
+    gazeY: 0.25,
+  },
   tall: { radiusX: 2.5, radiusY: 3.9, pupilScale: 0.96, gazeX: 0.62, gazeY: 1 },
-  hooded: { radiusX: 3.5, radiusY: 2.5, pupilScale: 0.9, gazeX: 0.88, gazeY: 0.48 },
-  uneven: { radiusX: 3.25, radiusY: 3, pupilScale: 0.96, gazeX: 0.78, gazeY: 0.68 },
+  hooded: {
+    radiusX: 3.5,
+    radiusY: 2.5,
+    pupilScale: 0.9,
+    gazeX: 0.88,
+    gazeY: 0.48,
+  },
+  uneven: {
+    radiusX: 3.25,
+    radiusY: 3,
+    pupilScale: 0.96,
+    gazeX: 0.78,
+    gazeY: 0.68,
+  },
 };
 
 const personalityOpenness: Record<AvatarPersonality, number> = {
@@ -131,7 +179,11 @@ function eyeDimensions(
   featureScale: number,
   openness: number,
   friendly: boolean,
-): { readonly radiusX: number; readonly radiusY: number; readonly pupilScale: number } {
+): {
+  readonly radiusX: number;
+  readonly radiusY: number;
+  readonly pupilScale: number;
+} {
   const base = eyeMetrics[style];
   const unevenScale =
     style === "uneven"
@@ -144,7 +196,9 @@ function eyeDimensions(
     radiusX: base.radiusX * featureScale * unevenScale.x,
     radiusY: base.radiusY * featureScale * openness * unevenScale.y,
     pupilScale:
-      base.pupilScale * unevenScale.pupil * (friendly ? friendlyPupilBoost[style] : 1),
+      base.pupilScale *
+      unevenScale.pupil *
+      (friendly ? friendlyPupilBoost[style] : 1),
   };
 }
 
@@ -157,7 +211,14 @@ interface EyeShapeProps {
   readonly style: EyeStyle;
 }
 
-function EyeShape({ centerX, centerY, radiusX, radiusY, side, style }: EyeShapeProps) {
+function EyeShape({
+  centerX,
+  centerY,
+  radiusX,
+  radiusY,
+  side,
+  style,
+}: EyeShapeProps) {
   if (style === "bead") return null;
 
   if (style === "almond" || (style === "uneven" && side === "right")) {
@@ -198,7 +259,14 @@ function EyeShape({ centerX, centerY, radiusX, radiusY, side, style }: EyeShapeP
   );
 }
 
-function FriendlyLid({ centerX, centerY, radiusX, radiusY, side, style }: EyeShapeProps) {
+function FriendlyLid({
+  centerX,
+  centerY,
+  radiusX,
+  radiusY,
+  side,
+  style,
+}: EyeShapeProps) {
   const aperture = getLidAperture(style, side);
   const horizontalInset = style === "bead" ? radiusX * 0.2 : 0;
   const leftX = centerX - radiusX + horizontalInset - 0.18;
@@ -255,7 +323,9 @@ function Eye({
   const desiredPupilY = centerY + gazeY * metrics.gazeY;
   const minimumPupilY =
     centerY - radiusY * getLidAperture(style, side) + renderedPupilSize * 0.35;
-  const pupilY = friendlyLids ? Math.max(desiredPupilY, minimumPupilY) : desiredPupilY;
+  const pupilY = friendlyLids
+    ? Math.max(desiredPupilY, minimumPupilY)
+    : desiredPupilY;
 
   return (
     <g
@@ -312,7 +382,8 @@ export function Eyes({
   const personalityScale = friendlyLids
     ? friendlyPersonalityOpenness[personality]
     : personalityOpenness[personality];
-  const openness = personalityScale * (friendlyLids ? friendlyOpenness[eyeStyle] : 1);
+  const openness =
+    personalityScale * (friendlyLids ? friendlyOpenness[eyeStyle] : 1);
   const leftDimensions = eyeDimensions(
     eyeStyle,
     "left",
@@ -331,8 +402,14 @@ export function Eyes({
   const leftY = geometry.face.leftEye.y;
   const rightX = geometry.face.rightEye.x;
   const rightY = geometry.face.rightEye.y;
-  const maximumRadiusX = Math.max(leftDimensions.radiusX, rightDimensions.radiusX);
-  const maximumRadiusY = Math.max(leftDimensions.radiusY, rightDimensions.radiusY);
+  const maximumRadiusX = Math.max(
+    leftDimensions.radiusX,
+    rightDimensions.radiusX,
+  );
+  const maximumRadiusY = Math.max(
+    leftDimensions.radiusY,
+    rightDimensions.radiusY,
+  );
   const legacyBrowClearance = eyeStyle === "tall" ? 7.15 : 6.15;
   const browClearance = friendlyLids
     ? Math.min(7.1, Math.max(5, maximumRadiusY + 2.6))
@@ -341,7 +418,9 @@ export function Eyes({
   const rightBrowY = rightY - browClearance + browLift + browAsymmetry * 0.5;
   const glassWidth = Math.max(8.8, maximumRadiusX * 2 + 3.5);
   const uncappedGlassHeight = Math.max(8, maximumRadiusY * 2 + 3.1);
-  const glassHeight = friendlyLids ? Math.min(10.5, uncappedGlassHeight) : uncappedGlassHeight;
+  const glassHeight = friendlyLids
+    ? Math.min(10.5, uncappedGlassHeight)
+    : uncappedGlassHeight;
   const bridgeY = (leftY + rightY) / 2;
 
   return (
@@ -384,24 +463,57 @@ export function Eyes({
 
       {accessory === "round-glasses" ? (
         <g className="agent-avatar__glasses agent-avatar__glasses--round">
-          <ellipse cx={leftX} cy={leftY} rx={glassWidth / 2} ry={glassHeight / 2} />
-          <ellipse cx={rightX} cy={rightY} rx={glassWidth / 2} ry={glassHeight / 2} />
-          <path d={`M${leftX + glassWidth / 2} ${leftY} Q${(leftX + rightX) / 2} ${bridgeY - 1} ${rightX - glassWidth / 2} ${rightY}`} />
+          <ellipse
+            cx={leftX}
+            cy={leftY}
+            rx={glassWidth / 2}
+            ry={glassHeight / 2}
+          />
+          <ellipse
+            cx={rightX}
+            cy={rightY}
+            rx={glassWidth / 2}
+            ry={glassHeight / 2}
+          />
+          <path
+            d={`M${leftX + glassWidth / 2} ${leftY} Q${(leftX + rightX) / 2} ${bridgeY - 1} ${rightX - glassWidth / 2} ${rightY}`}
+          />
         </g>
       ) : null}
 
       {accessory === "square-glasses" ? (
         <g className="agent-avatar__glasses agent-avatar__glasses--square">
-          <rect x={leftX - glassWidth / 2} y={leftY - glassHeight / 2} width={glassWidth} height={glassHeight} rx="2.1" />
-          <rect x={rightX - glassWidth / 2} y={rightY - glassHeight / 2} width={glassWidth} height={glassHeight} rx="2.1" />
-          <path d={`M${leftX + glassWidth / 2} ${leftY} Q${(leftX + rightX) / 2} ${bridgeY - 1} ${rightX - glassWidth / 2} ${rightY}`} />
+          <rect
+            x={leftX - glassWidth / 2}
+            y={leftY - glassHeight / 2}
+            width={glassWidth}
+            height={glassHeight}
+            rx="2.1"
+          />
+          <rect
+            x={rightX - glassWidth / 2}
+            y={rightY - glassHeight / 2}
+            width={glassWidth}
+            height={glassHeight}
+            rx="2.1"
+          />
+          <path
+            d={`M${leftX + glassWidth / 2} ${leftY} Q${(leftX + rightX) / 2} ${bridgeY - 1} ${rightX - glassWidth / 2} ${rightY}`}
+          />
         </g>
       ) : null}
 
       {accessory === "monocle" ? (
         <g className="agent-avatar__glasses agent-avatar__monocle">
-          <ellipse cx={rightX} cy={rightY} rx={glassWidth / 2} ry={glassHeight / 2} />
-          <path d={`M${rightX + glassWidth / 2 - 0.6} ${rightY + 3} Q${rightX + 7} 39 ${rightX + 6} 45`} />
+          <ellipse
+            cx={rightX}
+            cy={rightY}
+            rx={glassWidth / 2}
+            ry={glassHeight / 2}
+          />
+          <path
+            d={`M${rightX + glassWidth / 2 - 0.6} ${rightY + 3} Q${rightX + 7} 39 ${rightX + 6} 45`}
+          />
         </g>
       ) : null}
     </g>

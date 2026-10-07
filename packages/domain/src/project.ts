@@ -1,8 +1,8 @@
 import type { AgentId, ProjectId } from "./ids";
 import {
   instantiateTeam,
-  softwareDeliveryTeamV1,
   type ProjectAgent,
+  softwareDeliveryTeamV1,
   type TeamMemberTemplate,
   type TeamTemplate,
 } from "./team";

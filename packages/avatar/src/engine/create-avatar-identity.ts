@@ -16,7 +16,13 @@ import type {
 } from "../types";
 
 const legacyHeadShapes: readonly HeadShape[] = ["round", "oval", "soft-square"];
-const legacyHairStyles: readonly HairStyle[] = ["crop", "wave", "bob", "tuft", "cap"];
+const legacyHairStyles: readonly HairStyle[] = [
+  "crop",
+  "wave",
+  "bob",
+  "tuft",
+  "cap",
+];
 const legacyEyeStyles: readonly EyeStyle[] = ["round", "soft", "wide"];
 const legacyBrowStyles: readonly BrowStyle[] = ["soft", "straight", "arched"];
 const legacyAccessories: readonly AccessoryStyle[] = [
@@ -37,7 +43,11 @@ const headShapes: readonly HeadShape[] = [
   "long",
   "diamond",
 ];
-const expressiveHeadShapes: readonly HeadShape[] = [...headShapes, "bean", "box"];
+const expressiveHeadShapes: readonly HeadShape[] = [
+  ...headShapes,
+  "bean",
+  "box",
+];
 const hairStyles: readonly HairStyle[] = [
   "bare",
   "crop",
@@ -53,7 +63,13 @@ const hairStyles: readonly HairStyle[] = [
   "double-puff",
   "side-braid",
 ];
-const version2EyeStyles: readonly EyeStyle[] = ["round", "soft", "wide", "almond", "small"];
+const version2EyeStyles: readonly EyeStyle[] = [
+  "round",
+  "soft",
+  "wide",
+  "almond",
+  "small",
+];
 const version3EyeStyles = version2EyeStyles;
 const expressiveEyeStyles: readonly EyeStyle[] = [
   "bead",
@@ -92,7 +108,14 @@ const faceMarks: readonly FaceMark[] = [
   "mole",
   "scar",
 ];
-const palettes: readonly AvatarPaletteName[] = ["ink", "clay", "cocoa", "ochre", "rose", "umber"];
+const palettes: readonly AvatarPaletteName[] = [
+  "ink",
+  "clay",
+  "cocoa",
+  "ochre",
+  "rose",
+  "umber",
+];
 const personalities: readonly AvatarPersonality[] = [
   "calm",
   "curious",
@@ -136,7 +159,11 @@ function pick<T>(values: readonly T[], random: () => number): T {
   return values[Math.floor(random() * values.length)]!;
 }
 
-function between(random: () => number, minimum: number, maximum: number): number {
+function between(
+  random: () => number,
+  minimum: number,
+  maximum: number,
+): number {
   return minimum + random() * (maximum - minimum);
 }
 
@@ -149,11 +176,20 @@ function randomFor(seedHash: number, channel: string): () => number {
   return createRandom(hashSeed(`${seedHash}:${channel}`));
 }
 
-function pickFor<T>(seedHash: number, channel: string, values: readonly T[]): T {
+function pickFor<T>(
+  seedHash: number,
+  channel: string,
+  values: readonly T[],
+): T {
   return pick(values, randomFor(seedHash, channel));
 }
 
-function betweenFor(seedHash: number, channel: string, minimum: number, maximum: number): number {
+function betweenFor(
+  seedHash: number,
+  channel: string,
+  minimum: number,
+  maximum: number,
+): number {
   return between(randomFor(seedHash, channel), minimum, maximum);
 }
 
@@ -216,9 +252,15 @@ function createVersion2Identity(avatarSeed: string): AvatarIdentity {
     faceOffsetX: round(betweenFor(seedHash, "face-offset", -1.15, 1.15)),
     lineTilt: round(betweenFor(seedHash, "line-tilt", -1.1, 1.1)),
     restingTilt: round(betweenFor(seedHash, "resting-tilt", -0.65, 0.65)),
-    motionIntensity: round(betweenFor(seedHash, "motion-intensity", 0.78, 1.22)),
-    blinkDurationMs: Math.round(betweenFor(seedHash, "blink-duration", 6_800, 13_600)),
-    motionDelayMs: -Math.round(betweenFor(seedHash, "motion-delay", 400, 7_200)),
+    motionIntensity: round(
+      betweenFor(seedHash, "motion-intensity", 0.78, 1.22),
+    ),
+    blinkDurationMs: Math.round(
+      betweenFor(seedHash, "blink-duration", 6_800, 13_600),
+    ),
+    motionDelayMs: -Math.round(
+      betweenFor(seedHash, "motion-delay", 400, 7_200),
+    ),
   };
 }
 
@@ -227,7 +269,9 @@ function createModernIdentity(
   appearanceVersion: 3 | 4,
   availableEyeStyles: readonly EyeStyle[],
 ): AvatarIdentity {
-  const seedHash = hashSeed(`${appearanceVersion}:${avatarSeed.trim().toLowerCase()}`);
+  const seedHash = hashSeed(
+    `${appearanceVersion}:${avatarSeed.trim().toLowerCase()}`,
+  );
 
   return {
     appearanceVersion,
@@ -252,9 +296,15 @@ function createModernIdentity(
     faceOffsetX: round(betweenFor(seedHash, "face-offset", -0.65, 0.65)),
     lineTilt: round(betweenFor(seedHash, "line-tilt", -1.1, 1.1)),
     restingTilt: round(betweenFor(seedHash, "resting-tilt", -0.8, 0.8)),
-    motionIntensity: round(betweenFor(seedHash, "motion-intensity", 0.76, 1.25)),
-    blinkDurationMs: Math.round(betweenFor(seedHash, "blink-duration", 6_800, 13_600)),
-    motionDelayMs: -Math.round(betweenFor(seedHash, "motion-delay", 400, 7_200)),
+    motionIntensity: round(
+      betweenFor(seedHash, "motion-intensity", 0.76, 1.25),
+    ),
+    blinkDurationMs: Math.round(
+      betweenFor(seedHash, "blink-duration", 6_800, 13_600),
+    ),
+    motionDelayMs: -Math.round(
+      betweenFor(seedHash, "motion-delay", 400, 7_200),
+    ),
   };
 }
 
@@ -264,6 +314,7 @@ export function createAvatarIdentity(
 ): AvatarIdentity {
   if (appearanceVersion === 1) return createLegacyIdentity(avatarSeed);
   if (appearanceVersion === 2) return createVersion2Identity(avatarSeed);
-  if (appearanceVersion === 3) return createModernIdentity(avatarSeed, 3, version3EyeStyles);
+  if (appearanceVersion === 3)
+    return createModernIdentity(avatarSeed, 3, version3EyeStyles);
   return createModernIdentity(avatarSeed, 4, expressiveEyeStyles);
 }

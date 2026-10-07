@@ -1,4 +1,4 @@
-import { Component, StrictMode, type ReactNode } from "react";
+import { Component, type ReactNode, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
 import { App } from "./App";

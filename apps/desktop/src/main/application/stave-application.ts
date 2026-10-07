@@ -1,9 +1,8 @@
-import type { StaveStore } from "./persistence";
 import { agentId, createProject, projectId } from "@stave/domain";
 import type {
   CreateProjectRequest,
-  RepositoryRequest,
   CreateTicketRequest,
+  RepositoryRequest,
   StartRunRequest,
   TicketRequest,
 } from "../../shared/desktop-api";
@@ -16,6 +15,7 @@ import type {
   WorkspaceEvent,
   WorkspaceSnapshot,
 } from "../../shared/workspace-snapshot";
+import type { StaveStore } from "./persistence";
 
 export type WorkspaceListener = (event: WorkspaceEvent) => void;
 export type WorkStage = RunSnapshot["stage"];
@@ -317,8 +317,7 @@ export class StaveApplication {
     mode: RunMode,
     controller: AbortController,
   ): Promise<void> {
-    const runner =
-      mode === "codex" ? this.#codexRunner : this.#runner;
+    const runner = mode === "codex" ? this.#codexRunner : this.#runner;
     let runId: string | null = null;
     try {
       if (!runner) throw new Error("Codex runs are unavailable");
@@ -340,7 +339,8 @@ export class StaveApplication {
       const first =
         initialStage === "todo"
           ? 0
-          : stages.findIndex((stage) => stage === initialStage);
+          : // biome-ignore lint/complexity/useIndexOf: indexOf rejects the wider TicketStage type.
+            stages.findIndex((stage) => stage === initialStage);
       for (const stage of stages.slice(first)) {
         if (controller.signal.aborted) break;
         const agent = this.#snapshot.project?.agents.find(

@@ -7,5 +7,3 @@ declare global {
     readonly stave: StaveDesktopApi;
   }
 }
-
-export {};

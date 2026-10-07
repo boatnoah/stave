@@ -1,8 +1,8 @@
 import {
   AgentAvatar,
+  type AvatarStatus,
   avatarStatuses,
   createAvatarIdentity,
-  type AvatarStatus,
 } from "@stave/avatar";
 import { useState } from "react";
 

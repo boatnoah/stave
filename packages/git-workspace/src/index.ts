@@ -104,6 +104,7 @@ function validateInput(request: WorkspaceRequest): void {
     if (
       typeof value !== "string" ||
       !value.trim() ||
+      // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point.
       /[\x00-\x1f\x7f]/u.test(value)
     ) {
       throw new GitWorkspaceError(

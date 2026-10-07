@@ -1,8 +1,8 @@
-import { describe, expect, it } from "vitest";
 import type { IpcMainInvokeEvent } from "electron";
+import { describe, expect, it } from "vitest";
+import { ipcChannels } from "../../shared/ipc-contract";
 import { StaveApplication } from "../application/stave-application";
 import { registerStaveIpc } from "./register-stave-ipc";
-import { ipcChannels } from "../../shared/ipc-contract";
 
 describe("IPC authorization", () => {
   it("rejects untrusted frames before accessing or mutating state and removes handlers on dispose", () => {

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { openStaveStore } from "./persistence";
 import { StaveApplication } from "./stave-application";
+
 const paths: string[] = [];
 afterEach(() => {
   for (const path of paths.splice(0))
