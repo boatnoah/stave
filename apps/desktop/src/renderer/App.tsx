@@ -662,7 +662,7 @@ export function App() {
           )}
           <footer className="workspace-footer">
             <span>Stave · Thoughtful work, together.</span>
-            <span>This session</span>
+            <span>Saved locally</span>
           </footer>
         </main>
       )}
