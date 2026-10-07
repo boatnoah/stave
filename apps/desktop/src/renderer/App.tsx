@@ -160,6 +160,10 @@ export function App() {
   const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
   const [projectName, setProjectName] = useState("");
   const [repositoryPath, setRepositoryPath] = useState("");
+  const [repositoryDraft, setRepositoryDraft] = useState<string | null>(null);
+  const [preparingTicketId, setPreparingTicketId] = useState<string | null>(
+    null,
+  );
   const [ticketFormOpen, setTicketFormOpen] = useState(false);
   const [ticketTitle, setTicketTitle] = useState("");
   const [ticketDescription, setTicketDescription] = useState("");
@@ -245,6 +249,29 @@ export function App() {
     );
   }
 
+  function saveRepository(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const path = repositoryDraft ?? project?.repositoryPath ?? "";
+    void command(
+      "repository",
+      () =>
+        window.stave.projects.setRepository({ repositoryPath: path.trim() }),
+      () => setRepositoryDraft(null),
+    );
+  }
+
+  async function prepareWorkspace(ticket: TicketSnapshot) {
+    if (pendingRef.current.has(ticket.id) || preparingTicketId) return;
+    setPreparingTicketId(ticket.id);
+    try {
+      await command(ticket.id, () =>
+        window.stave.workspaces.prepare({ ticketId: ticket.id }),
+      );
+    } finally {
+      setPreparingTicketId(null);
+    }
+  }
+
   const snapshot = workspace.status === "ready" ? workspace.snapshot : null;
   const project = snapshot?.project;
   const selectedTicket = snapshot?.tickets.find(
@@ -255,6 +282,14 @@ export function App() {
   const activeCount =
     snapshot?.tickets.filter((ticket) => ticket.execution === "running")
       .length ?? 0;
+  const hasWorkspaces =
+    snapshot?.tickets.some((ticket) => ticket.workspace !== null) ?? false;
+  const repositoryLocked =
+    hasWorkspaces ||
+    activeCount > 0 ||
+    preparingTicketId !== null ||
+    pending.has("repository") ||
+    (snapshot?.tickets.some((ticket) => pending.has(ticket.id)) ?? false);
 
   function runControls(ticket: TicketSnapshot) {
     const busy = pending.has(ticket.id);
@@ -280,7 +315,9 @@ export function App() {
       <button
         type="button"
         className="button button--small"
-        disabled={busy}
+        disabled={
+          busy || preparingTicketId !== null || pending.has("repository")
+        }
         onClick={() =>
           void command(ticket.id, () =>
             window.stave.runs.start({
@@ -290,7 +327,11 @@ export function App() {
           )
         }
       >
-        {busy ? "Starting…" : "Run simulation"}
+        {preparingTicketId === ticket.id
+          ? "Preparing…"
+          : busy
+            ? "Starting…"
+            : "Run simulation"}
         <span aria-hidden="true">↗</span>
       </button>
     );
@@ -332,7 +373,7 @@ export function App() {
         <AvatarLab />
       ) : (
         <main className="workspace">
-          {error && (
+          {error && !selectedTicket && (
             <div className="notice notice--error" role="alert">
               <p>{error}</p>
               <button
@@ -447,6 +488,41 @@ export function App() {
                   </div>
                 </div>
               </section>
+              <form className="repository-form" onSubmit={saveRepository}>
+                <div className="repository-form__field">
+                  <label htmlFor="project-repository-path">
+                    Repository path
+                  </label>
+                  <input
+                    id="project-repository-path"
+                    value={repositoryDraft ?? project.repositoryPath ?? ""}
+                    onChange={(event) => setRepositoryDraft(event.target.value)}
+                    placeholder="/Users/you/projects/your-project"
+                    required
+                    disabled={repositoryLocked}
+                    aria-describedby="repository-hint"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="button button--quiet"
+                  disabled={
+                    repositoryLocked ||
+                    !(repositoryDraft ?? project.repositoryPath ?? "").trim() ||
+                    (repositoryDraft ?? project.repositoryPath ?? "").trim() ===
+                      project.repositoryPath
+                  }
+                >
+                  {pending.has("repository")
+                    ? "Saving repository…"
+                    : "Save repository"}
+                </button>
+                <p id="repository-hint" className="repository-form__hint">
+                  {hasWorkspaces
+                    ? "The repository stays fixed once a ticket has a workspace."
+                    : "Connect a local Git repository to prepare a separate workspace for each ticket."}
+                </p>
+              </form>
               <section className="crew" aria-label="Project team">
                 <div className="section-kicker">
                   <h2>The team</h2>
@@ -691,6 +767,19 @@ export function App() {
           <p className="ticket-detail__description">
             {selectedTicket.description || "No description added."}
           </p>
+          {error && (
+            <div className="notice notice--error" role="alert">
+              <p>{error}</p>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setError(null)}
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+          <h3>Git workspace</h3>
           {selectedTicket.workspace && (
             <dl className="ticket-workspace">
               <dt>Workspace</dt>
@@ -704,6 +793,38 @@ export function App() {
                   : "Clean"}
               </dd>
             </dl>
+          )}
+          {project?.repositoryPath ? (
+            <div className="workspace-preparation">
+              <p>
+                {selectedTicket.workspace
+                  ? "Refresh to check the branch and any uncommitted changes."
+                  : "Prepare an isolated Git workspace for this ticket. Simulation runs leave its files unchanged."}
+              </p>
+              <button
+                type="button"
+                className="button button--small button--quiet"
+                disabled={
+                  pending.has(selectedTicket.id) ||
+                  preparingTicketId !== null ||
+                  activeCount > 0 ||
+                  pending.has("repository")
+                }
+                onClick={() => void prepareWorkspace(selectedTicket)}
+              >
+                {preparingTicketId === selectedTicket.id
+                  ? selectedTicket.workspace
+                    ? "Refreshing workspace…"
+                    : "Preparing workspace…"
+                  : selectedTicket.workspace
+                    ? "Refresh workspace"
+                    : "Prepare workspace"}
+              </button>
+            </div>
+          ) : (
+            <p className="workspace-preparation__hint">
+              Set a repository path in the project to prepare a Git workspace.
+            </p>
           )}
           <div className="ticket-detail__controls">
             {runControls(selectedTicket)}

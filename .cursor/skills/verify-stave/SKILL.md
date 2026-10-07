@@ -60,6 +60,12 @@ The driver connects to the real Electron renderer, captures the initial screen, 
 
 Use the same CDP recipe for other mapped features. Prefer accessible labels, visible button text, and semantic headings. Do not use screen coordinates or tab counts.
 
+## Persistence and Git workspaces
+
+Set `STAVE_DATA_DIR` to a separate disposable directory before launch to preserve it across verification-instance cleanup. After `drive-workflow`, stop the instance, relaunch with the same data directory, and run `verify-restored` to check the same identities and run history.
+
+For Git proof, create a disposable committed repository and a fresh data directory. Set `VERIFY_REPOSITORY` and run `drive-git`. It selects the repository through the UI, prepares a ticket workspace, writes one verification file there, and refreshes to prove the path, branch and unfinished file are preserved. Do not point this proof at a real user repository.
+
 ## Evidence
 
 Proof is written beneath `artifacts/verification/stave/<run-id>/`:

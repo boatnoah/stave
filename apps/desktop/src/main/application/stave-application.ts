@@ -2,6 +2,7 @@ import type { StaveStore } from "./persistence";
 import { agentId, createProject, projectId } from "@stave/domain";
 import type {
   CreateProjectRequest,
+  RepositoryRequest,
   CreateTicketRequest,
   StartRunRequest,
   TicketRequest,
@@ -60,6 +61,11 @@ export const simulateStage: StageRunner = ({ stage, signal, onOutput }) =>
     if (signal.aborted) abort();
   });
 
+export type WorkspaceProvider = (input: {
+  repositoryPath: string;
+  ticketId: string;
+}) => Promise<NonNullable<TicketSnapshot["workspace"]>>;
+
 export class StaveApplication {
   #snapshot: WorkspaceSnapshot = {
     revision: 0,
@@ -72,6 +78,8 @@ export class StaveApplication {
   readonly #runner: StageRunner;
   readonly #store: StaveStore | undefined;
   readonly #onFatalError: (error: unknown) => void;
+  readonly #workspaceProvider: WorkspaceProvider | undefined;
+  #preparing: Promise<WorkspaceSnapshot> | null = null;
   #active: {
     ticketId: string;
     controller: AbortController;
@@ -83,7 +91,9 @@ export class StaveApplication {
     store?: StaveStore,
     onFatalError: (error: unknown) => void = (error) =>
       console.error("Stave storage failure", error),
+    workspaceProvider?: WorkspaceProvider,
   ) {
+    this.#workspaceProvider = workspaceProvider;
     this.#onFatalError = onFatalError;
     this.#runner = runner;
     this.#store = store;
@@ -162,6 +172,60 @@ export class StaveApplication {
     );
   }
 
+  setRepository(request: RepositoryRequest): WorkspaceSnapshot {
+    if (!this.#snapshot.project) throw new Error("Create a project first");
+    if (
+      this.#active ||
+      this.#preparing ||
+      this.#snapshot.tickets.some((ticket) => ticket.workspace)
+    )
+      throw new Error(
+        "Repository cannot change while workspaces or active work exist",
+      );
+    return this.#change(
+      {
+        ...this.#snapshot,
+        project: {
+          ...this.#snapshot.project,
+          repositoryPath: request.repositoryPath,
+        },
+      },
+      null,
+      "Repository path updated",
+    );
+  }
+
+  async prepareWorkspace(request: TicketRequest): Promise<WorkspaceSnapshot> {
+    if (this.#active || this.#preparing)
+      throw new Error("Wait for active work before preparing a workspace");
+    this.#ticket(request.ticketId);
+    const repositoryPath = this.#snapshot.project?.repositoryPath;
+    if (!repositoryPath) throw new Error("Set a repository path first");
+    if (!this.#workspaceProvider)
+      throw new Error("Git workspaces are unavailable");
+    const operation = this.#workspaceProvider({
+      repositoryPath,
+      ticketId: request.ticketId,
+    }).then((workspace) =>
+      this.#change(
+        {
+          ...this.#snapshot,
+          tickets: this.#snapshot.tickets.map((ticket) =>
+            ticket.id === request.ticketId ? { ...ticket, workspace } : ticket,
+          ),
+        },
+        request.ticketId,
+        `Workspace ready on ${workspace.branch}${workspace.dirty ? "; unfinished changes preserved" : ""}`,
+      ),
+    );
+    this.#preparing = operation;
+    try {
+      return await operation;
+    } finally {
+      this.#preparing = null;
+    }
+  }
+
   createTicket(request: CreateTicketRequest): WorkspaceSnapshot {
     if (!this.#snapshot.project) throw new Error("Create a project first");
     const title = request.title.trim();
@@ -185,7 +249,7 @@ export class StaveApplication {
   }
 
   startRun(request: StartRunRequest): WorkspaceSnapshot {
-    if (this.#active)
+    if (this.#active || this.#preparing)
       throw new Error(
         "A run is already active. Wait for it or cancel it first.",
       );
@@ -218,6 +282,7 @@ export class StaveApplication {
   }
 
   async shutdown(): Promise<void> {
+    if (this.#preparing) await this.#preparing.catch(() => {});
     const active = this.#active;
     if (active) {
       active.controller.abort();

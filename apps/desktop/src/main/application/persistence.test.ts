@@ -75,13 +75,22 @@ describe("durable application", () => {
     const store = openStaveStore(databasePath());
     const fatal = vi.fn();
     let finish: () => void = () => {};
-    const app = new StaveApplication(() => new Promise(resolve => { finish = () => resolve({state:"succeeded",summary:"Finished"}); }), store, fatal);
-    app.createProject({name:"Storage failure"});
-    const ticket = app.createTicket({title:"Run",description:""}).tickets[0];
+    const app = new StaveApplication(
+      () =>
+        new Promise((resolve) => {
+          finish = () => resolve({ state: "succeeded", summary: "Finished" });
+        }),
+      store,
+      fatal,
+    );
+    app.createProject({ name: "Storage failure" });
+    const ticket = app.createTicket({ title: "Run", description: "" })
+      .tickets[0];
     if (!ticket) throw new Error("Missing ticket");
-    app.startRun({ticketId:ticket.id,mode:"simulation"});
+    app.startRun({ ticketId: ticket.id, mode: "simulation" });
     const before = app.getSnapshot();
-    store.close(); finish();
+    store.close();
+    finish();
     await vi.waitFor(() => expect(fatal).toHaveBeenCalledOnce());
     expect(app.getSnapshot()).toEqual(before);
     await app.shutdown();

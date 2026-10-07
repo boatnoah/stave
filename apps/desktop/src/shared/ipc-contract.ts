@@ -16,6 +16,8 @@ import type {
 export const ipcChannels = {
   getWorkspaceSnapshot: "stave:workspace:get-snapshot",
   createProject: "stave:projects:create",
+  setRepository: "stave:projects:set-repository",
+  prepareWorkspace: "stave:workspaces:prepare",
   createTicket: "stave:tickets:create",
   startRun: "stave:runs:start",
   cancelRun: "stave:runs:cancel",
@@ -238,4 +240,16 @@ function parseWork(
       };
     }),
   };
+}
+
+export function parseRepositoryRequest(value: unknown): {
+  repositoryPath: string;
+} {
+  const repositoryPath = requireString(
+    requireRecord(value, "Repository request").repositoryPath,
+    "Repository path",
+  );
+  if (repositoryPath.length > 4096 || /[\x00-\x1f]/u.test(repositoryPath))
+    throw new Error("Invalid repository path");
+  return { repositoryPath };
 }

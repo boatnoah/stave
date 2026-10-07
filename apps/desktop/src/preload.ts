@@ -16,9 +16,19 @@ const desktopApi: StaveDesktopApi = Object.freeze({
       ),
   }),
   projects: Object.freeze<StaveDesktopApi["projects"]>({
+    setRepository: async (request) =>
+      parseWorkspaceSnapshot(
+        await ipcRenderer.invoke(ipcChannels.setRepository, request),
+      ),
     create: async (request) =>
       parseWorkspaceSnapshot(
         await ipcRenderer.invoke(ipcChannels.createProject, request),
+      ),
+  }),
+  workspaces: Object.freeze<StaveDesktopApi["workspaces"]>({
+    prepare: async (request) =>
+      parseWorkspaceSnapshot(
+        await ipcRenderer.invoke(ipcChannels.prepareWorkspace, request),
       ),
   }),
   tickets: Object.freeze<StaveDesktopApi["tickets"]>({

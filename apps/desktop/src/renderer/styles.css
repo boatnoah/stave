@@ -907,6 +907,7 @@ button:disabled {
   margin: 0 0 30px;
 }
 .project-form label,
+.repository-form label,
 .ticket-form label {
   align-items: center;
   display: flex;
@@ -921,6 +922,7 @@ button:disabled {
   font-weight: 400;
 }
 .project-form input,
+.repository-form input,
 .ticket-form input,
 .ticket-form textarea {
   background: #fffdf8;
@@ -934,6 +936,7 @@ button:disabled {
   width: 100%;
 }
 .project-form input::placeholder,
+.repository-form input::placeholder,
 .ticket-form input::placeholder,
 .ticket-form textarea::placeholder {
   color: #afa591;
@@ -949,6 +952,34 @@ button:disabled {
 }
 .project-form > .button {
   width: 100%;
+}
+.repository-form {
+  align-items: end;
+  display: grid;
+  gap: 10px 14px;
+  grid-template-columns: minmax(0, 560px) auto;
+  justify-content: start;
+  margin: -17px 0 32px;
+}
+.repository-form input:disabled {
+  background: #eee9df;
+  color: #8a8070;
+}
+.repository-form__hint {
+  color: #968b77;
+  font-size: 10px;
+  grid-column: 1 / -1;
+  line-height: 1.6;
+  margin: 0;
+}
+.workspace-preparation p,
+.workspace-preparation__hint {
+  color: #968b77;
+  font-size: 11px;
+  line-height: 1.7;
+}
+.workspace-preparation {
+  margin-bottom: 20px;
 }
 .ticket-form {
   align-items: start;
@@ -1173,6 +1204,12 @@ button:disabled {
   }
 }
 @media (max-width: 480px) {
+  .repository-form {
+    grid-template-columns: 1fr;
+  }
+  .repository-form > .button {
+    justify-self: start;
+  }
   .product-header {
     min-height: 90px;
     padding: 35px 18px 15px;
