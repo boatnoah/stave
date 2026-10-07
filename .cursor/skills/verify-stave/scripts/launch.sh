@@ -41,6 +41,7 @@ printf 'stave-verification-v1\n%s\n%s\n' "$canonical_state_dir" "$port" >"$state
 
 (
   cd "$repo_root"
+  export STAVE_DATA_DIR="${STAVE_DATA_DIR:-$state_dir/data}"
   exec pnpm --filter @stave/desktop exec electron-forge start -- \
     "--remote-debugging-port=$port" \
     "--user-data-dir=$state_dir/profile"

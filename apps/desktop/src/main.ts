@@ -1,5 +1,7 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "node:path";
+import { mkdirSync } from "node:fs";
+import { openStaveStore } from "./main/application/persistence";
 import { pathToFileURL } from "node:url";
 
 import { StaveApplication } from "./main/application/stave-application";
@@ -8,7 +10,30 @@ import { registerStaveIpc } from "./main/ipc/register-stave-ipc";
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 
-const staveApplication = new StaveApplication();
+const dataDirectory = process.env.STAVE_DATA_DIR ?? app.getPath("userData");
+mkdirSync(dataDirectory, { recursive: true });
+app.setPath("userData", dataDirectory);
+if (!app.requestSingleInstanceLock()) {
+  app.exit(0);
+}
+let store: ReturnType<typeof openStaveStore>;
+try {
+  store = openStaveStore(path.join(dataDirectory, "stave.sqlite"));
+} catch (error) {
+  dialog.showErrorBox(
+    "Stave could not open your workspace",
+    `${error instanceof Error ? error.message : String(error)}\nYour existing data has been kept. Quit other Stave instances or restore a valid database before reopening.`,
+  );
+  app.exit(1);
+  throw error;
+}
+const staveApplication = new StaveApplication(undefined, store, (error) => {
+  dialog.showErrorBox(
+    "Stave could not save this run",
+    `${error instanceof Error ? error.message : String(error)}\nStave will close to preserve the last saved state. Reopen it after resolving the storage problem.`,
+  );
+  app.exit(1);
+});
 const trustedRenderers = new Map<number, string>();
 
 registerStaveIpc({
@@ -91,5 +116,8 @@ app.on("before-quit", (event) => {
   if (quitting) return;
   event.preventDefault();
   quitting = true;
-  void staveApplication.shutdown().finally(() => app.quit());
+  void staveApplication.shutdown().finally(() => {
+    store.close();
+    app.quit();
+  });
 });

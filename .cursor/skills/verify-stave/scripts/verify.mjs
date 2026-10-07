@@ -224,7 +224,26 @@ async function driveWorkflow() {
   console.log(JSON.stringify(result,null,2));
 }
 
-if (command === "drive-workflow") await driveWorkflow();
+async function verifyRestored() {
+  assert.ok(evidenceDirectory);
+  await mkdir(evidenceDirectory, {recursive:true});
+  const result = await withStaveClient(async client => {
+    const snapshot = await evaluate(client, "window.stave.workspace.getSnapshot()");
+    const visible = await evaluate(client, "({team:[...document.querySelectorAll('.crew-member h3')].map(e=>e.textContent),done:document.querySelectorAll('.board-column--done .work-ticket').length})");
+    assert.equal(snapshot.project.name, 'Workflow proof');
+    assert.equal(snapshot.tickets.length, 1);
+    assert.equal(snapshot.tickets[0].stage, 'done');
+    assert.deepEqual(snapshot.runs.map(r=>r.state), ['canceled','succeeded','succeeded','succeeded']);
+    assert.deepEqual(visible.team, ['Maya','Alex','Sam']);
+    assert.equal(visible.done,1);
+    await captureScreenshot(client, `${evidenceDirectory}/restored.png`);
+    return {passed:true,feature:'restart-persistence',revision:snapshot.revision,projectId:snapshot.project.id,ticketId:snapshot.tickets[0].id,runs:snapshot.runs.length,visible};
+  });
+  await writeFile(`${evidenceDirectory}/result.json`,JSON.stringify(result,null,2));
+  console.log(JSON.stringify(result,null,2));
+}
+if (command === "verify-restored") await verifyRestored();
+else if (command === "drive-workflow") await driveWorkflow();
 else if (command === "doctor") await doctor();
 else if (command === "drive-state-preview") await driveStatePreview();
 else {

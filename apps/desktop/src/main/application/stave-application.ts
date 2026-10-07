@@ -1,3 +1,4 @@
+import type { StaveStore } from "./persistence";
 import { agentId, createProject, projectId } from "@stave/domain";
 import type {
   CreateProjectRequest,
@@ -37,7 +38,7 @@ const roles = {
 const stages: readonly WorkStage[] = ["implementation", "review", "qa"];
 
 export const simulateStage: StageRunner = ({ stage, signal, onOutput }) =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     const finish = (state: "succeeded" | "canceled") => {
       clearTimeout(timer);
       signal.removeEventListener("abort", abort);
@@ -45,7 +46,12 @@ export const simulateStage: StageRunner = ({ stage, signal, onOutput }) =>
         state === "canceled"
           ? "Simulation canceled"
           : `Simulated ${stage} passed. No repository files were changed.`;
-      if (state === "succeeded") onOutput(`${summary}\n`);
+      try {
+        if (state === "succeeded") onOutput(`${summary}\n`);
+      } catch (error) {
+        reject(error);
+        return;
+      }
       resolve({ state, summary });
     };
     const abort = () => finish("canceled");
@@ -64,14 +70,61 @@ export class StaveApplication {
   };
   readonly #listeners = new Set<WorkspaceListener>();
   readonly #runner: StageRunner;
+  readonly #store: StaveStore | undefined;
+  readonly #onFatalError: (error: unknown) => void;
   #active: {
     ticketId: string;
     controller: AbortController;
     done: Promise<void>;
   } | null = null;
 
-  constructor(runner: StageRunner = simulateStage) {
+  constructor(
+    runner: StageRunner = simulateStage,
+    store?: StaveStore,
+    onFatalError: (error: unknown) => void = (error) =>
+      console.error("Stave storage failure", error),
+  ) {
+    this.#onFatalError = onFatalError;
     this.#runner = runner;
+    this.#store = store;
+    if (store) {
+      const saved = store.load();
+      if (saved) this.#snapshot = saved;
+      else
+        store.save({
+          snapshot: this.#snapshot,
+          event: { revision: 0, message: "Workspace initialized" },
+          expectedRevision: null,
+        });
+      if (
+        this.#snapshot.tickets.some(
+          (ticket) => ticket.execution === "running",
+        ) ||
+        this.#snapshot.runs.some((run) => run.state === "running")
+      ) {
+        this.#change(
+          {
+            ...this.#snapshot,
+            tickets: this.#snapshot.tickets.map((ticket) =>
+              ticket.execution === "running"
+                ? { ...ticket, execution: "interrupted" }
+                : ticket,
+            ),
+            runs: this.#snapshot.runs.map((run) =>
+              run.state === "running"
+                ? {
+                    ...run,
+                    state: "interrupted",
+                    summary: "Application stopped before this run completed",
+                  }
+                : run,
+            ),
+          },
+          null,
+          "Recovered interrupted work. Resume when ready.",
+        );
+      }
+    }
   }
 
   getSnapshot(): WorkspaceSnapshot {
@@ -147,9 +200,11 @@ export class StaveApplication {
     const controller = new AbortController();
     const active = { ticketId: ticket.id, controller, done: Promise.resolve() };
     this.#active = active;
-    active.done = this.#execute(ticket.id, controller).finally(() => {
-      if (this.#active === active) this.#active = null;
-    });
+    active.done = this.#execute(ticket.id, controller)
+      .catch((error) => this.#onFatalError(error))
+      .finally(() => {
+        if (this.#active === active) this.#active = null;
+      });
     return this.getSnapshot();
   }
 
@@ -299,7 +354,7 @@ export class StaveApplication {
     ticketId?: string | null,
     message?: string,
   ): WorkspaceSnapshot {
-    this.#snapshot = {
+    const next = {
       ...snapshot,
       revision: this.#snapshot.revision + 1,
       activity: message
@@ -314,6 +369,15 @@ export class StaveApplication {
           ].slice(-500)
         : snapshot.activity,
     };
+    this.#store?.save({
+      snapshot: next,
+      event: {
+        revision: next.revision,
+        message: message ?? "Run output updated",
+      },
+      expectedRevision: this.#snapshot.revision,
+    });
+    this.#snapshot = next;
     const result = this.getSnapshot();
     for (const listener of this.#listeners) {
       try {
