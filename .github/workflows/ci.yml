@@ -104,7 +104,7 @@ jobs:
           retention-days: 14
 
   app:
-    name: Package and end-to-end (macOS)
+    name: Build and end-to-end (macOS)
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: macos-latest
@@ -121,8 +121,8 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Package the app
-        run: pnpm --filter @stave/desktop package
+      - name: Build the DMG and ZIP (unsigned)
+        run: pnpm --filter @stave/desktop make
       - name: End-to-end tests
         run: pnpm --filter @stave/desktop e2e
       - if: failure()

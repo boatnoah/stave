@@ -1,5 +1,6 @@
 {
   "name": "@stave/desktop",
+  "productName": "Stave",
   "version": "0.0.0",
   "private": true,
   "description": "Stave desktop application",
@@ -19,10 +20,12 @@
     "@stave/domain": "workspace:*",
     "@stave/git-workspace": "workspace:*",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "update-electron-app": "3.3.0"
   },
   "devDependencies": {
     "@electron-forge/cli": "8.0.0-alpha.10",
+    "@electron-forge/maker-dmg": "8.0.0-alpha.10",
     "@electron-forge/maker-zip": "8.0.0-alpha.10",
     "@electron-forge/plugin-fuses": "8.0.0-alpha.10",
     "@electron-forge/plugin-vite": "8.0.0-alpha.10",
