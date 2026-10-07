@@ -20,19 +20,23 @@ docs/architecture/     Architectural boundaries and decisions
 
 Codex runs use your existing `codex` CLI sign-in. They make local changes in a per-ticket worktree and never push.
 
+## Contributing
+
+Commands, layout, and rules for people and coding agents are in [AGENTS.md](AGENTS.md). See [CONTRIBUTING.md](CONTRIBUTING.md) for the PR flow.
+
 ## Development
 
-Requirements: Node.js 22 or newer and pnpm 11.
+Requirements: Node.js 24 or newer and pnpm 11.
 
 ```bash
 pnpm install
 pnpm dev
 ```
 
-Run all checks with:
+Run everything CI runs with:
 
 ```bash
-pnpm check
+pnpm verify
 ```
 
 ## Avatar principles

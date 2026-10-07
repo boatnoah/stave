@@ -10,3 +10,5 @@ nodeLinker: hoisted
 allowBuilds:
   electron: true
   esbuild: true
+  # `pnpm prepare` installs the Git hooks; the package postinstall is unneeded.
+  lefthook: false

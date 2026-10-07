@@ -1,0 +1,7 @@
+# Fast local guardrails. CI runs the full `pnpm verify`.
+pre-commit:
+  commands:
+    biome:
+      glob: "*.{js,mjs,cjs,ts,tsx,mts,cts,json,jsonc,css}"
+      run: pnpm exec biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
