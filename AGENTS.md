@@ -69,3 +69,4 @@ Read the matching `docs/specs/*.md` before changing a feature, and update it in 
 - Fill in the PR template, especially **Verification**.
 - UI changes need proof from the real app. Use the `verify-stave` skill in `.agents/skills/verify-stave/` and attach the screenshots.
 - Record lasting design decisions as a new file in `docs/adr/`.
+- Releases are automated; never bump versions or edit `CHANGELOG.md` by hand. See `docs/releasing.md`.

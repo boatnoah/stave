@@ -10,5 +10,8 @@ nodeLinker: hoisted
 allowBuilds:
   electron: true
   esbuild: true
+  # Native modules the macOS DMG maker compiles.
+  fs-xattr: true
+  macos-alias: true
   # `pnpm prepare` installs the Git hooks; the package postinstall is unneeded.
   lefthook: false

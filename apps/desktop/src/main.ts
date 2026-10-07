@@ -4,6 +4,7 @@ import { pathToFileURL } from "node:url";
 import { runCodex } from "@stave/agent-runtime";
 import { createOrReuseWorkspace } from "@stave/git-workspace";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
+import { UpdateSourceType, updateElectronApp } from "update-electron-app";
 import { createCodexStageRunner } from "./main/application/codex-stage";
 import { openStaveStore } from "./main/application/persistence";
 
@@ -106,6 +107,16 @@ function createMainWindow(): BrowserWindow {
   window.once("ready-to-show", () => window.show());
   return window;
 }
+
+// Released builds update from GitHub Releases through update.electronjs.org.
+// macOS only installs updates for signed builds; unsigned builds log and skip.
+if (app.isPackaged)
+  updateElectronApp({
+    updateSource: {
+      type: UpdateSourceType.ElectronPublicUpdateService,
+      repo: "boatnoah/stave",
+    },
+  });
 
 void app.whenReady().then(() => {
   createMainWindow();
