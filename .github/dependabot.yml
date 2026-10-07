@@ -5,6 +5,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # Let new releases age a week before adopting them; security updates skip this.
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 10
     commit-message:
       prefix: build
@@ -29,6 +32,9 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    # Let new releases age a week before adopting them; security updates skip this.
+    cooldown:
+      default-days: 7
     commit-message:
       prefix: ci
     groups:
