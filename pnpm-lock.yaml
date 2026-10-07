@@ -13,6 +13,9 @@ importers:
       '@stave/avatar':
         specifier: workspace:*
         version: link:../../packages/avatar
+      '@stave/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
       react:
         specifier: ^19.2.8
         version: 19.2.8
