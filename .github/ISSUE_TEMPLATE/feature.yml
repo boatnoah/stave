@@ -1,0 +1,19 @@
+name: Feature request
+description: Propose a change to Stave.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: How will we know it is done?

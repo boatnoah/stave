@@ -12,10 +12,12 @@
     "test": "pnpm --recursive test",
     "typecheck": "pnpm --recursive typecheck",
     "verify": "biome ci --error-on-warnings . && pnpm typecheck && pnpm test",
-    "check": "pnpm verify"
+    "check": "pnpm verify",
+    "prepare": "lefthook install"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.15"
+    "@biomejs/biome": "2.5.15",
+    "lefthook": "2.1.17"
   },
   "engines": {
     "node": ">=24"

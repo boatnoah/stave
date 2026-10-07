@@ -14,7 +14,7 @@ From the repository root, choose an unused port and an isolated state directory:
 ```bash
 VERIFY_PORT=9333
 VERIFY_STATE="/tmp/stave-verify-$VERIFY_PORT"
-.cursor/skills/verify-stave/scripts/launch.sh "$VERIFY_PORT" "$VERIFY_STATE"
+.agents/skills/verify-stave/scripts/launch.sh "$VERIFY_PORT" "$VERIFY_STATE"
 ```
 
 The helper runs the documented Electron Forge development entry point with a dedicated Chromium profile and remote-debugging port. It is ready when the helper prints `Stave verification instance ready`. Keep that terminal or execution session open while driving the app. Logs and exact process IDs are stored under `$VERIFY_STATE`.
@@ -24,7 +24,7 @@ Run only one driver against a given port. Parallel instances are safe when they 
 Teardown:
 
 ```bash
-.cursor/skills/verify-stave/scripts/cleanup.sh "$VERIFY_PORT" "$VERIFY_STATE"
+.agents/skills/verify-stave/scripts/cleanup.sh "$VERIFY_PORT" "$VERIFY_STATE"
 ```
 
 ## Doctor
@@ -32,7 +32,7 @@ Teardown:
 Before driving the app, confirm that the expected Stave renderer owns the chosen endpoint:
 
 ```bash
-node .cursor/skills/verify-stave/scripts/verify.mjs doctor "$VERIFY_PORT"
+node .agents/skills/verify-stave/scripts/verify.mjs doctor "$VERIFY_PORT"
 ```
 
 The doctor fails unless CDP exposes a page titled `Stave` with the product workspace or avatar lab. A failed doctor means the instance is not worth driving. Inspect `$VERIFY_STATE/launcher.log`, clean up that instance, and launch again.
@@ -42,7 +42,7 @@ The doctor fails unless CDP exposes a page titled `Stave` with the product works
 Verify a fresh product workspace with:
 
 ```bash
-node .cursor/skills/verify-stave/scripts/verify.mjs drive-workflow "$VERIFY_PORT" "$VERIFY_EVIDENCE"
+node .agents/skills/verify-stave/scripts/verify.mjs drive-workflow "$VERIFY_PORT" "$VERIFY_EVIDENCE"
 ```
 
 This creates a project and ticket through the visible forms, cancels a simulated run, restarts it, verifies all three role handoffs and completion, and captures the board. Use a fresh isolated profile.
@@ -53,7 +53,7 @@ Drive the current state-preview feature through stable visible labels:
 ```bash
 VERIFY_RUN="$(date -u +%Y%m%dT%H%M%SZ)"
 VERIFY_EVIDENCE="artifacts/verification/stave/$VERIFY_RUN"
-node .cursor/skills/verify-stave/scripts/verify.mjs drive-state-preview "$VERIFY_PORT" "$VERIFY_EVIDENCE"
+node .agents/skills/verify-stave/scripts/verify.mjs drive-state-preview "$VERIFY_PORT" "$VERIFY_EVIDENCE"
 ```
 
 The driver connects to the real Electron renderer, captures the initial screen, clicks the visible `Blocked` control, verifies every agent card reports `Blocked`, and captures the resulting screen. It does not call React internals or test-only setters.
@@ -83,7 +83,7 @@ The current avatar preview has no durable side effect. Its proof is the visible 
 Always clean up the exact instance you launched:
 
 ```bash
-.cursor/skills/verify-stave/scripts/cleanup.sh "$VERIFY_PORT" "$VERIFY_STATE"
+.agents/skills/verify-stave/scripts/cleanup.sh "$VERIFY_PORT" "$VERIFY_STATE"
 ```
 
 The helper only terminates PIDs recorded by `launch.sh` and verifies the Electron PID still owns the selected port before signaling it. It removes the isolated profile and logs. It never removes `artifacts/verification`, so evidence survives teardown.
