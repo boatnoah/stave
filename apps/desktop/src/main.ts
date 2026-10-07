@@ -2,6 +2,8 @@ import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
 import { createOrReuseWorkspace } from "@stave/git-workspace";
+import { runCodex } from "@stave/agent-runtime";
+import { createCodexStageRunner } from "./main/application/codex-stage";
 import { openStaveStore } from "./main/application/persistence";
 import { pathToFileURL } from "node:url";
 
@@ -34,6 +36,7 @@ try {
         ...input,
         workspaceRoot: path.join(dataDirectory, "workspaces"),
       }),
+    createCodexStageRunner(runCodex),
   );
 } catch (error) {
   dialog.showErrorBox(

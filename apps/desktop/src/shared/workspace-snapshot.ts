@@ -41,12 +41,14 @@ export type ExecutionState =
   | "interrupted"
   | "waiting_capacity"
   | "waiting_user";
+export type RunMode = "simulation" | "codex";
 export interface TicketSnapshot {
   readonly id: string;
   readonly title: string;
   readonly description: string;
   readonly stage: TicketStage;
   readonly execution: ExecutionState;
+  readonly mode: RunMode;
   readonly assignedAgentId: string | null;
   readonly runId: string | null;
   readonly output: string;

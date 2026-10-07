@@ -1,4 +1,8 @@
-import type { WorkspaceEvent, WorkspaceSnapshot } from "./workspace-snapshot";
+import type {
+  RunMode,
+  WorkspaceEvent,
+  WorkspaceSnapshot,
+} from "./workspace-snapshot";
 
 export interface CreateProjectRequest {
   readonly name: string;
@@ -15,7 +19,7 @@ export interface CreateTicketRequest {
 }
 export interface StartRunRequest {
   readonly ticketId: string;
-  readonly mode: "simulation";
+  readonly mode: RunMode;
 }
 export interface TicketRequest {
   readonly ticketId: string;

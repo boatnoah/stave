@@ -4,6 +4,7 @@ import {
   type WorkspaceSnapshot,
   type TicketStage,
   type ExecutionState,
+  type RunMode,
   type RunSnapshot,
 } from "./workspace-snapshot";
 import type {
@@ -150,8 +151,7 @@ export function parseTicketRequest(value: unknown): TicketRequest {
 }
 export function parseStartRunRequest(value: unknown): StartRunRequest {
   const record = requireRecord(value, "Run request");
-  if (record.mode !== "simulation") throw new Error("Unsupported run mode");
-  return { ...parseTicketRequest(record), mode: record.mode };
+  return { ...parseTicketRequest(record), mode: parseMode(record.mode) };
 }
 function requireText(value: unknown, label: string): string {
   if (typeof value !== "string") throw new Error(`${label} must be a string`);
@@ -171,6 +171,10 @@ function parseStage(value: unknown): TicketStage {
     default:
       throw new Error("Invalid ticket stage");
   }
+}
+function parseMode(value: unknown): RunMode {
+  if (value === "simulation" || value === "codex") return value;
+  throw new Error("Unsupported run mode");
 }
 function parseExecution(value: unknown): ExecutionState {
   switch (value) {
@@ -208,6 +212,8 @@ function parseWork(
         description: requireText(ticket.description, "Description"),
         stage: parseStage(ticket.stage),
         execution: parseExecution(ticket.execution),
+        // Tickets saved before Codex support were always simulations.
+        mode: ticket.mode === undefined ? "simulation" : parseMode(ticket.mode),
         assignedAgentId: nullableString(ticket.assignedAgentId, "Agent id"),
         runId: nullableString(ticket.runId, "Run id"),
         output: requireText(ticket.output, "Output"),
