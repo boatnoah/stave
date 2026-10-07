@@ -3,8 +3,8 @@ import type { IpcMain, IpcMainInvokeEvent } from "electron";
 import {
   ipcChannels,
   parseCreateProjectRequest,
-  parseRepositoryRequest,
   parseCreateTicketRequest,
+  parseRepositoryRequest,
   parseStartRunRequest,
   parseTicketRequest,
 } from "../../shared/ipc-contract";

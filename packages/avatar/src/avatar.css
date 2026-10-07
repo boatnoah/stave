@@ -161,12 +161,15 @@
   stroke-width: 1.5;
 }
 
-.agent-avatar__eyes-and-brows[data-brow-style="bold"] .agent-avatar__brows path {
+.agent-avatar__eyes-and-brows[data-brow-style="bold"]
+  .agent-avatar__brows
+  path {
   stroke-width: 2.25;
 }
 
 .agent-avatar__eye {
-  animation: stave-avatar-blink var(--avatar-blink-duration) var(--avatar-motion-delay) infinite;
+  animation: stave-avatar-blink var(--avatar-blink-duration)
+    var(--avatar-motion-delay) infinite;
   transform-box: fill-box;
   transform-origin: center;
 }
@@ -364,90 +367,115 @@
 }
 
 /* Temperament supplies a rare ambient gesture, on its own transform layer. */
-.agent-avatar[data-detail="hero"][data-personality="curious"] .agent-avatar__presence {
-  animation: stave-avatar-curious-rest 10.4s ease-in-out var(--avatar-acting-delay) infinite;
+.agent-avatar[data-detail="hero"][data-personality="curious"]
+.agent-avatar__presence {
+  animation: stave-avatar-curious-rest 10.4s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
-.agent-avatar[data-detail="hero"][data-personality="bright"] .agent-avatar__presence {
-  animation: stave-avatar-bright-rest 11.8s ease-in-out var(--avatar-acting-delay) infinite;
+.agent-avatar[data-detail="hero"][data-personality="bright"]
+  .agent-avatar__presence {
+  animation: stave-avatar-bright-rest 11.8s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
-.agent-avatar[data-detail="hero"][data-personality="wry"] .agent-avatar__presence {
-  animation: stave-avatar-wry-rest 12.8s ease-in-out var(--avatar-acting-delay) infinite;
+.agent-avatar[data-detail="hero"][data-personality="wry"]
+  .agent-avatar__presence {
+  animation: stave-avatar-wry-rest 12.8s ease-in-out var(--avatar-acting-delay)
+    infinite;
 }
 
 /* Status acting: long holds, one readable beat, then stillness. */
 .agent-avatar[data-status="queued"] .agent-avatar__status-effect--queue {
-  animation: stave-avatar-queue-dots 7.8s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-queue-dots 7.8s ease-in-out var(--avatar-acting-delay)
+    infinite;
 }
 
 .agent-avatar[data-status="queued"] .agent-avatar__status-dot--2 {
-  animation: stave-avatar-dot-pop 7.8s ease-in-out calc(var(--avatar-acting-delay) + 100ms) infinite;
+  animation: stave-avatar-dot-pop 7.8s ease-in-out
+    calc(var(--avatar-acting-delay) + 100ms) infinite;
 }
 
 .agent-avatar[data-status="queued"] .agent-avatar__status-dot--3 {
-  animation: stave-avatar-dot-pop 7.8s ease-in-out calc(var(--avatar-acting-delay) + 200ms) infinite;
+  animation: stave-avatar-dot-pop 7.8s ease-in-out
+    calc(var(--avatar-acting-delay) + 200ms) infinite;
 }
 
 .agent-avatar[data-status="working"] .agent-avatar__status-pose {
-  animation: stave-avatar-working-pose 8.2s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-working-pose 8.2s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="working"] .agent-avatar__pupil {
-  animation: stave-avatar-working-gaze 8.2s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-working-gaze 8.2s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="working"] .agent-avatar__mouth-rest {
-  animation: stave-avatar-mouth-rest-beat 8.2s step-end var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-mouth-rest-beat 8.2s step-end
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="working"] .agent-avatar__mouth-open {
-  animation: stave-avatar-mouth-open-beat 8.2s step-end var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-mouth-open-beat 8.2s step-end
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="working"] .agent-avatar__status-effect--thought {
-  animation: stave-avatar-thought 8.2s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-thought 8.2s ease-in-out var(--avatar-acting-delay)
+    infinite;
 }
 
-.agent-avatar[data-acting-style="reserved"][data-status="working"] .agent-avatar__mouth-rest,
-.agent-avatar[data-acting-style="reserved"][data-status="working"] .agent-avatar__mouth-open {
+.agent-avatar[data-acting-style="reserved"][data-status="working"]
+  .agent-avatar__mouth-rest,
+.agent-avatar[data-acting-style="reserved"][data-status="working"]
+  .agent-avatar__mouth-open {
   animation: none;
 }
 
 .agent-avatar[data-status="reviewing"] .agent-avatar__status-pose {
-  animation: stave-avatar-review-pose 7.4s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-review-pose 7.4s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="reviewing"] .agent-avatar__pupil {
-  animation: stave-avatar-review-gaze 7.4s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-review-gaze 7.4s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="reviewing"] .agent-avatar__mouth-rig {
-  animation: stave-avatar-mouth-purse 7.4s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-mouth-purse 7.4s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="reviewing"] .agent-avatar__status-effect--hmm {
-  animation: stave-avatar-hmm 7.4s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-hmm 7.4s ease-in-out var(--avatar-acting-delay)
+    infinite;
 }
 
 .agent-avatar[data-status="waiting"] .agent-avatar__status-pose {
-  animation: stave-avatar-listen-pose 8.6s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-listen-pose 8.6s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="waiting"] .agent-avatar__brows {
-  animation: stave-avatar-brow-question 8.6s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-brow-question 8.6s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="waiting"] .agent-avatar__mouth-rest {
-  animation: stave-avatar-mouth-rest-question 8.6s step-end var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-mouth-rest-question 8.6s step-end
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="waiting"] .agent-avatar__mouth-open {
-  animation: stave-avatar-mouth-open-question 8.6s step-end var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-mouth-open-question 8.6s step-end
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="waiting"] .agent-avatar__status-effect--question {
-  animation: stave-avatar-question-mark 8.6s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-question-mark 8.6s ease-in-out
+    var(--avatar-acting-delay) infinite;
 }
 
 .agent-avatar[data-status="blocked"] .agent-avatar__status-pose {
@@ -455,7 +483,8 @@
 }
 
 .agent-avatar[data-status="blocked"] .agent-avatar__sigh-line {
-  animation: stave-avatar-sigh 9.8s ease-in-out var(--avatar-acting-delay) infinite;
+  animation: stave-avatar-sigh 9.8s ease-in-out var(--avatar-acting-delay)
+    infinite;
 }
 
 .agent-avatar[data-status="failed"] .agent-avatar__status-pose {
@@ -507,7 +536,9 @@
   animation: stave-avatar-tear 820ms ease-in both;
 }
 
-.agent-avatar[data-reaction="failed"] .agent-avatar__tear--secondary .agent-avatar__tear-drop {
+.agent-avatar[data-reaction="failed"]
+  .agent-avatar__tear--secondary
+  .agent-avatar__tear-drop {
   animation-delay: 90ms;
 }
 
@@ -538,182 +569,479 @@
 }
 
 @keyframes stave-avatar-blink {
-  0%, 91%, 94%, 100% { transform: scaleY(1); }
-  92.5% { transform: scaleY(0.08); }
+  0%,
+  91%,
+  94%,
+  100% {
+    transform: scaleY(1);
+  }
+  92.5% {
+    transform: scaleY(0.08);
+  }
 }
 
 @keyframes stave-avatar-curious-rest {
-  0%, 58%, 100% { transform: translateY(0) rotate(0deg); }
-  66%, 76% { transform: translateY(calc(-0.35px * var(--avatar-motion-intensity))) rotate(-0.7deg); }
+  0%,
+  58%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  66%,
+  76% {
+    transform: translateY(calc(-0.35px * var(--avatar-motion-intensity)))
+      rotate(-0.7deg);
+  }
 }
 
 @keyframes stave-avatar-bright-rest {
-  0%, 68%, 100% { transform: translateY(0); }
-  75% { transform: translateY(calc(-0.55px * var(--avatar-motion-intensity))); }
-  82% { transform: translateY(0.1px); }
+  0%,
+  68%,
+  100% {
+    transform: translateY(0);
+  }
+  75% {
+    transform: translateY(calc(-0.55px * var(--avatar-motion-intensity)));
+  }
+  82% {
+    transform: translateY(0.1px);
+  }
 }
 
 @keyframes stave-avatar-wry-rest {
-  0%, 72%, 100% { transform: rotate(0deg); }
-  79%, 88% { transform: rotate(0.65deg); }
+  0%,
+  72%,
+  100% {
+    transform: rotate(0deg);
+  }
+  79%,
+  88% {
+    transform: rotate(0.65deg);
+  }
 }
 
 @keyframes stave-avatar-queue-dots {
-  0%, 18%, 64%, 100% { opacity: 0.12; transform: translateY(0); }
-  27%, 50% { opacity: 0.78; transform: translateY(-0.4px); }
+  0%,
+  18%,
+  64%,
+  100% {
+    opacity: 0.12;
+    transform: translateY(0);
+  }
+  27%,
+  50% {
+    opacity: 0.78;
+    transform: translateY(-0.4px);
+  }
 }
 
 @keyframes stave-avatar-dot-pop {
-  0%, 22%, 31%, 100% { transform: scale(0.65); }
-  25%, 28% { transform: scale(1.12); }
+  0%,
+  22%,
+  31%,
+  100% {
+    transform: scale(0.65);
+  }
+  25%,
+  28% {
+    transform: scale(1.12);
+  }
 }
 
 @keyframes stave-avatar-working-pose {
-  0%, 24%, 68%, 100% { transform: translateY(0) rotate(0deg); }
-  30%, 38% { transform: rotate(-0.3deg); }
-  44%, 51% { transform: rotate(0.28deg); }
-  58% { transform: translateY(calc(0.72px * var(--avatar-motion-intensity) * var(--avatar-nod-scale))) rotate(0.18deg); }
-  64% { transform: translateY(0.05px) rotate(0deg); }
+  0%,
+  24%,
+  68%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  30%,
+  38% {
+    transform: rotate(-0.3deg);
+  }
+  44%,
+  51% {
+    transform: rotate(0.28deg);
+  }
+  58% {
+    transform: translateY(
+        calc(0.72px * var(--avatar-motion-intensity) * var(--avatar-nod-scale))
+      )
+      rotate(0.18deg);
+  }
+  64% {
+    transform: translateY(0.05px) rotate(0deg);
+  }
 }
 
 @keyframes stave-avatar-working-gaze {
-  0%, 26%, 68%, 100% { transform: translate(0, 0); }
-  30%, 36% { transform: translateX(calc(-0.72px * var(--avatar-motion-intensity))); }
-  40%, 47% { transform: translateX(calc(0.72px * var(--avatar-motion-intensity))); }
-  53%, 61% { transform: translateY(calc(0.4px * var(--avatar-motion-intensity))); }
+  0%,
+  26%,
+  68%,
+  100% {
+    transform: translate(0, 0);
+  }
+  30%,
+  36% {
+    transform: translateX(calc(-0.72px * var(--avatar-motion-intensity)));
+  }
+  40%,
+  47% {
+    transform: translateX(calc(0.72px * var(--avatar-motion-intensity)));
+  }
+  53%,
+  61% {
+    transform: translateY(calc(0.4px * var(--avatar-motion-intensity)));
+  }
 }
 
 @keyframes stave-avatar-mouth-rest-beat {
-  0%, 43%, 52%, 100% { opacity: 1; }
-  44%, 51% { opacity: 0; }
+  0%,
+  43%,
+  52%,
+  100% {
+    opacity: 1;
+  }
+  44%,
+  51% {
+    opacity: 0;
+  }
 }
 
 @keyframes stave-avatar-mouth-open-beat {
-  0%, 43%, 52%, 100% { opacity: 0; transform: scale(0.72); }
-  44%, 47% { opacity: 0.86; transform: scale(0.9, 0.58); }
-  48%, 51% { opacity: 0.75; transform: scale(0.72, 0.45); }
+  0%,
+  43%,
+  52%,
+  100% {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+  44%,
+  47% {
+    opacity: 0.86;
+    transform: scale(0.9, 0.58);
+  }
+  48%,
+  51% {
+    opacity: 0.75;
+    transform: scale(0.72, 0.45);
+  }
 }
 
 @keyframes stave-avatar-thought {
-  0%, 22%, 68%, 100% { opacity: 0; transform: translateY(1px) scale(0.88); }
-  30%, 56% { opacity: 0.72; transform: translateY(0) scale(1); }
+  0%,
+  22%,
+  68%,
+  100% {
+    opacity: 0;
+    transform: translateY(1px) scale(0.88);
+  }
+  30%,
+  56% {
+    opacity: 0.72;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @keyframes stave-avatar-review-pose {
-  0%, 62%, 100% { transform: rotate(0deg); }
-  71%, 86% { transform: rotate(-0.48deg); }
+  0%,
+  62%,
+  100% {
+    transform: rotate(0deg);
+  }
+  71%,
+  86% {
+    transform: rotate(-0.48deg);
+  }
 }
 
 @keyframes stave-avatar-review-gaze {
-  0%, 20%, 82%, 100% { transform: translateX(calc(-0.8px * var(--avatar-motion-intensity))); }
-  42%, 64% { transform: translateX(calc(0.8px * var(--avatar-motion-intensity))); }
+  0%,
+  20%,
+  82%,
+  100% {
+    transform: translateX(calc(-0.8px * var(--avatar-motion-intensity)));
+  }
+  42%,
+  64% {
+    transform: translateX(calc(0.8px * var(--avatar-motion-intensity)));
+  }
 }
 
 @keyframes stave-avatar-mouth-purse {
-  0%, 60%, 100% { transform: scaleX(1); }
-  70%, 84% { transform: scaleX(0.78) translateY(-0.2px); }
+  0%,
+  60%,
+  100% {
+    transform: scaleX(1);
+  }
+  70%,
+  84% {
+    transform: scaleX(0.78) translateY(-0.2px);
+  }
 }
 
 @keyframes stave-avatar-hmm {
-  0%, 58%, 100% { opacity: 0; transform: translateX(0); }
-  70%, 86% { opacity: 0.58; transform: translateX(0.35px); }
+  0%,
+  58%,
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  70%,
+  86% {
+    opacity: 0.58;
+    transform: translateX(0.35px);
+  }
 }
 
 @keyframes stave-avatar-listen-pose {
-  0%, 68%, 100% { transform: rotate(0deg); }
-  76%, 91% { transform: rotate(-0.65deg) translateY(-0.2px); }
+  0%,
+  68%,
+  100% {
+    transform: rotate(0deg);
+  }
+  76%,
+  91% {
+    transform: rotate(-0.65deg) translateY(-0.2px);
+  }
 }
 
 @keyframes stave-avatar-brow-question {
-  0%, 71%, 100% { transform: translateY(0); }
-  78%, 92% { transform: translateY(-0.75px); }
+  0%,
+  71%,
+  100% {
+    transform: translateY(0);
+  }
+  78%,
+  92% {
+    transform: translateY(-0.75px);
+  }
 }
 
 @keyframes stave-avatar-mouth-rest-question {
-  0%, 74%, 91%, 100% { opacity: 1; }
-  78%, 88% { opacity: 0; }
+  0%,
+  74%,
+  91%,
+  100% {
+    opacity: 1;
+  }
+  78%,
+  88% {
+    opacity: 0;
+  }
 }
 
 @keyframes stave-avatar-mouth-open-question {
-  0%, 74%, 91%, 100% { opacity: 0; transform: scale(0.7); }
-  78%, 88% { opacity: 0.88; transform: scale(0.82, 0.68); }
+  0%,
+  74%,
+  91%,
+  100% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  78%,
+  88% {
+    opacity: 0.88;
+    transform: scale(0.82, 0.68);
+  }
 }
 
 @keyframes stave-avatar-question-mark {
-  0%, 68%, 100% { opacity: 0; transform: translateY(1px) rotate(-4deg); }
-  77%, 92% { opacity: 0.72; transform: translateY(0) rotate(0deg); }
+  0%,
+  68%,
+  100% {
+    opacity: 0;
+    transform: translateY(1px) rotate(-4deg);
+  }
+  77%,
+  92% {
+    opacity: 0.72;
+    transform: translateY(0) rotate(0deg);
+  }
 }
 
 @keyframes stave-avatar-sigh {
-  0%, 72%, 100% { opacity: 0; transform: translateX(0); }
-  80%, 92% { opacity: 0.56; transform: translateX(0.7px); }
+  0%,
+  72%,
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  80%,
+  92% {
+    opacity: 0.56;
+    transform: translateX(0.7px);
+  }
 }
 
 @keyframes stave-avatar-blocked {
-  0% { transform: translateX(0) rotate(0deg); }
-  28% { transform: translateX(-0.65px) rotate(-1.25deg); }
-  58% { transform: translateX(0.25px) rotate(0.45deg); }
-  100% { transform: translateY(0.3px) rotate(-0.4deg); }
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  28% {
+    transform: translateX(-0.65px) rotate(-1.25deg);
+  }
+  58% {
+    transform: translateX(0.25px) rotate(0.45deg);
+  }
+  100% {
+    transform: translateY(0.3px) rotate(-0.4deg);
+  }
 }
 
 @keyframes stave-avatar-mouth-exhale {
-  0%, 30% { transform: scaleX(0.82); }
-  64% { transform: scale(1.08, 0.7); }
-  100% { transform: scaleX(0.9); }
+  0%,
+  30% {
+    transform: scaleX(0.82);
+  }
+  64% {
+    transform: scale(1.08, 0.7);
+  }
+  100% {
+    transform: scaleX(0.9);
+  }
 }
 
 @keyframes stave-avatar-knot {
-  0% { opacity: 0; transform: scale(0.7) rotate(-10deg); }
-  55% { opacity: 0.8; transform: scale(1.08) rotate(4deg); }
-  100% { opacity: 0.52; transform: scale(1) rotate(0deg); }
+  0% {
+    opacity: 0;
+    transform: scale(0.7) rotate(-10deg);
+  }
+  55% {
+    opacity: 0.8;
+    transform: scale(1.08) rotate(4deg);
+  }
+  100% {
+    opacity: 0.52;
+    transform: scale(1) rotate(0deg);
+  }
 }
 
 @keyframes stave-avatar-done {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  38% { transform: translateY(calc(1.3px * var(--avatar-motion-intensity) * var(--avatar-nod-scale))) rotate(0.5deg); }
-  66% { transform: translateY(calc(-0.35px * var(--avatar-motion-intensity))) rotate(-0.25deg); }
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  38% {
+    transform: translateY(
+        calc(1.3px * var(--avatar-motion-intensity) * var(--avatar-nod-scale))
+      )
+      rotate(0.5deg);
+  }
+  66% {
+    transform: translateY(calc(-0.35px * var(--avatar-motion-intensity)))
+      rotate(-0.25deg);
+  }
 }
 
 @keyframes stave-avatar-done-mouth-rest {
-  0%, 30%, 82%, 100% { opacity: 1; }
-  38%, 72% { opacity: 0; }
+  0%,
+  30%,
+  82%,
+  100% {
+    opacity: 1;
+  }
+  38%,
+  72% {
+    opacity: 0;
+  }
 }
 
 @keyframes stave-avatar-done-mouth-open {
-  0%, 30%, 82%, 100% { opacity: 0; transform: scale(0.7); }
-  38%, 72% { opacity: 0.38; transform: scale(1.25, 0.52); }
+  0%,
+  30%,
+  82%,
+  100% {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+  38%,
+  72% {
+    opacity: 0.38;
+    transform: scale(1.25, 0.52);
+  }
 }
 
 @keyframes stave-avatar-done-mouth-alt {
-  0%, 30%, 82%, 100% { opacity: 0; transform: translateY(0) scaleX(0.8); }
-  38%, 72% { opacity: 1; transform: translateY(-0.1px) scaleX(1.08); }
+  0%,
+  30%,
+  82%,
+  100% {
+    opacity: 0;
+    transform: translateY(0) scaleX(0.8);
+  }
+  38%,
+  72% {
+    opacity: 1;
+    transform: translateY(-0.1px) scaleX(1.08);
+  }
 }
 
 @keyframes stave-avatar-sparkles {
-  0%, 22% { opacity: 0; transform: scale(0.55) rotate(-8deg); }
-  48%, 72% { opacity: 0.92; transform: scale(1.08) rotate(3deg); }
-  100% { opacity: 0; transform: scale(1.2) rotate(6deg); }
+  0%,
+  22% {
+    opacity: 0;
+    transform: scale(0.55) rotate(-8deg);
+  }
+  48%,
+  72% {
+    opacity: 0.92;
+    transform: scale(1.08) rotate(3deg);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.2) rotate(6deg);
+  }
 }
 
 @keyframes stave-avatar-failed {
-  0% { transform: translateX(0) rotate(0deg); }
-  20% { transform: translateX(-0.65px) rotate(-0.7deg); }
-  36% { transform: translateX(0.55px) rotate(0.55deg); }
-  52% { transform: translateX(-0.3px) rotate(-0.3deg); }
-  100% { transform: translateY(0.65px) rotate(0.35deg); }
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  20% {
+    transform: translateX(-0.65px) rotate(-0.7deg);
+  }
+  36% {
+    transform: translateX(0.55px) rotate(0.55deg);
+  }
+  52% {
+    transform: translateX(-0.3px) rotate(-0.3deg);
+  }
+  100% {
+    transform: translateY(0.65px) rotate(0.35deg);
+  }
 }
 
 @keyframes stave-avatar-mouth-tremble {
-  0%, 20%, 100% { transform: translateX(0) scaleX(1); }
-  31% { transform: translateX(-0.35px) scaleX(0.88); }
-  42% { transform: translateX(0.35px) scaleX(0.92); }
-  54% { transform: translateX(-0.2px) scaleX(0.9); }
+  0%,
+  20%,
+  100% {
+    transform: translateX(0) scaleX(1);
+  }
+  31% {
+    transform: translateX(-0.35px) scaleX(0.88);
+  }
+  42% {
+    transform: translateX(0.35px) scaleX(0.92);
+  }
+  54% {
+    transform: translateX(-0.2px) scaleX(0.9);
+  }
 }
 
 @keyframes stave-avatar-tear {
-  0%, 30% { opacity: 0; transform: translateY(-3px) scale(0.55); }
-  48% { opacity: 0.88; transform: translateY(-1px) scale(0.8); }
-  100% { opacity: 0.72; transform: translateY(3px) scale(1); }
+  0%,
+  30% {
+    opacity: 0;
+    transform: translateY(-3px) scale(0.55);
+  }
+  48% {
+    opacity: 0.88;
+    transform: translateY(-1px) scale(0.8);
+  }
+  100% {
+    opacity: 0.72;
+    transform: translateY(3px) scale(1);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

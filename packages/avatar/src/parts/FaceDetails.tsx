@@ -1,6 +1,6 @@
 import type { AvatarGeometry } from "../geometry/create-avatar-geometry";
-import type { FaceMark, MouthStyle, NoseStyle } from "../types";
 import type { MouthShape } from "../motion/status-expression";
+import type { FaceMark, MouthStyle, NoseStyle } from "../types";
 
 interface FaceDetailsProps {
   readonly faceMark: FaceMark;
@@ -43,18 +43,39 @@ function mouthPath(
   return `M${centerX - halfWidth} ${leftY} Q${centerX} ${y + 1.15} ${centerX + halfWidth} ${rightY}`;
 }
 
-function Nose({ geometry, style }: { readonly geometry: AvatarGeometry; readonly style: NoseStyle }) {
+function Nose({
+  geometry,
+  style,
+}: {
+  readonly geometry: AvatarGeometry;
+  readonly style: NoseStyle;
+}) {
   const { noseTop: top, noseBottom: bottom } = geometry.face;
   const centerX = (top.x + bottom.x) / 2;
 
   if (style === "button") {
-    return <path className="agent-avatar__nose" d={`M${centerX - 2.1} ${bottom.y - 0.35} Q${centerX} ${bottom.y + 1.5} ${centerX + 2.1} ${bottom.y - 0.35}`} />;
+    return (
+      <path
+        className="agent-avatar__nose"
+        d={`M${centerX - 2.1} ${bottom.y - 0.35} Q${centerX} ${bottom.y + 1.5} ${centerX + 2.1} ${bottom.y - 0.35}`}
+      />
+    );
   }
   if (style === "wedge") {
-    return <path className="agent-avatar__nose" d={`M${top.x - 1} ${top.y} L${bottom.x - 2.1} ${bottom.y} Q${centerX} ${bottom.y + 1.1} ${bottom.x + 2} ${bottom.y - 0.1}`} />;
+    return (
+      <path
+        className="agent-avatar__nose"
+        d={`M${top.x - 1} ${top.y} L${bottom.x - 2.1} ${bottom.y} Q${centerX} ${bottom.y + 1.1} ${bottom.x + 2} ${bottom.y - 0.1}`}
+      />
+    );
   }
   if (style === "dash") {
-    return <path className="agent-avatar__nose" d={`M${bottom.x - 1.3} ${bottom.y} Q${centerX} ${bottom.y + 0.55} ${bottom.x + 1.3} ${bottom.y}`} />;
+    return (
+      <path
+        className="agent-avatar__nose"
+        d={`M${bottom.x - 1.3} ${bottom.y} Q${centerX} ${bottom.y + 0.55} ${bottom.x + 1.3} ${bottom.y}`}
+      />
+    );
   }
   return (
     <path
@@ -64,7 +85,13 @@ function Nose({ geometry, style }: { readonly geometry: AvatarGeometry; readonly
   );
 }
 
-function FaceMarks({ faceMark, geometry }: { readonly faceMark: FaceMark; readonly geometry: AvatarGeometry }) {
+function FaceMarks({
+  faceMark,
+  geometry,
+}: {
+  readonly faceMark: FaceMark;
+  readonly geometry: AvatarGeometry;
+}) {
   const left = geometry.face.leftMark;
   const right = geometry.face.rightMark;
 
@@ -89,7 +116,14 @@ function FaceMarks({ faceMark, geometry }: { readonly faceMark: FaceMark; readon
     );
   }
   if (faceMark === "mole") {
-    return <circle className="agent-avatar__face-mark agent-avatar__face-mark--mole" cx={right.x + 0.4} cy={right.y + 1.1} r="0.72" />;
+    return (
+      <circle
+        className="agent-avatar__face-mark agent-avatar__face-mark--mole"
+        cx={right.x + 0.4}
+        cy={right.y + 1.1}
+        r="0.72"
+      />
+    );
   }
   if (faceMark === "scar") {
     return (

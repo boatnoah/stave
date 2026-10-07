@@ -1,6 +1,12 @@
 import type { AvatarPersonality, AvatarStatus } from "../types";
 
-export type MouthShape = "neutral" | "focused" | "concerned" | "smile" | "open" | "smirk";
+export type MouthShape =
+  | "neutral"
+  | "focused"
+  | "concerned"
+  | "smile"
+  | "open"
+  | "smirk";
 
 export interface StatusExpression {
   readonly mouth: MouthShape;
@@ -12,13 +18,55 @@ export interface StatusExpression {
 
 const baseExpressions: Record<AvatarStatus, StatusExpression> = {
   idle: { mouth: "neutral", browLift: 0, browAsymmetry: 0, gazeX: 0, gazeY: 0 },
-  queued: { mouth: "neutral", browLift: 0, browAsymmetry: 0, gazeX: 0, gazeY: 0 },
-  working: { mouth: "focused", browLift: 0, browAsymmetry: 0, gazeX: 0, gazeY: 0.25 },
-  reviewing: { mouth: "focused", browLift: -0.2, browAsymmetry: 0, gazeX: -0.2, gazeY: 0 },
-  waiting: { mouth: "neutral", browLift: -1, browAsymmetry: 0.25, gazeX: 0.25, gazeY: -0.7 },
-  blocked: { mouth: "concerned", browLift: -0.5, browAsymmetry: 0.5, gazeX: -0.25, gazeY: 0.35 },
-  done: { mouth: "smile", browLift: -0.35, browAsymmetry: 0, gazeX: 0, gazeY: 0 },
-  failed: { mouth: "concerned", browLift: -0.15, browAsymmetry: 0.3, gazeX: 0.2, gazeY: 0.45 },
+  queued: {
+    mouth: "neutral",
+    browLift: 0,
+    browAsymmetry: 0,
+    gazeX: 0,
+    gazeY: 0,
+  },
+  working: {
+    mouth: "focused",
+    browLift: 0,
+    browAsymmetry: 0,
+    gazeX: 0,
+    gazeY: 0.25,
+  },
+  reviewing: {
+    mouth: "focused",
+    browLift: -0.2,
+    browAsymmetry: 0,
+    gazeX: -0.2,
+    gazeY: 0,
+  },
+  waiting: {
+    mouth: "neutral",
+    browLift: -1,
+    browAsymmetry: 0.25,
+    gazeX: 0.25,
+    gazeY: -0.7,
+  },
+  blocked: {
+    mouth: "concerned",
+    browLift: -0.5,
+    browAsymmetry: 0.5,
+    gazeX: -0.25,
+    gazeY: 0.35,
+  },
+  done: {
+    mouth: "smile",
+    browLift: -0.35,
+    browAsymmetry: 0,
+    gazeX: 0,
+    gazeY: 0,
+  },
+  failed: {
+    mouth: "concerned",
+    browLift: -0.15,
+    browAsymmetry: 0.3,
+    gazeX: 0.2,
+    gazeY: 0.45,
+  },
 };
 
 export function getStatusExpression(
@@ -31,7 +79,9 @@ export function getStatusExpression(
     return {
       ...base,
       mouth: status === "waiting" ? "open" : base.mouth,
-      browLift: base.browLift - (status === "queued" || status === "idle" ? 0.35 : 0.15),
+      browLift:
+        base.browLift -
+        (status === "queued" || status === "idle" ? 0.35 : 0.15),
       browAsymmetry: base.browAsymmetry + 0.4,
       gazeX: base.gazeX - 0.35,
       gazeY: base.gazeY - 0.15,
@@ -42,7 +92,9 @@ export function getStatusExpression(
     return {
       ...base,
       mouth: status === "idle" || status === "queued" ? "focused" : base.mouth,
-      browLift: base.browLift + (status === "working" || status === "reviewing" ? 0.35 : 0.1),
+      browLift:
+        base.browLift +
+        (status === "working" || status === "reviewing" ? 0.35 : 0.1),
       gazeY: base.gazeY + (status === "working" ? 0.35 : 0),
     };
   }

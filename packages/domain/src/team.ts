@@ -39,7 +39,8 @@ export const softwareDeliveryTeamV1 = {
       displayName: "Alex",
       role: "engineer",
       avatarSeed: "alex-engineer",
-      persona: "Implements focused slices and records evidence from the codebase.",
+      persona:
+        "Implements focused slices and records evidence from the codebase.",
     },
     {
       key: "sam",
@@ -59,8 +60,14 @@ export function instantiateTeam(
   const keys = new Set<string>();
   const ids = new Set<AgentId>();
 
-  if (template.id.trim().length === 0 || !Number.isSafeInteger(template.version) || template.version < 1) {
-    throw new Error("Team template requires an id and positive integer version");
+  if (
+    template.id.trim().length === 0 ||
+    !Number.isSafeInteger(template.version) ||
+    template.version < 1
+  ) {
+    throw new Error(
+      "Team template requires an id and positive integer version",
+    );
   }
 
   if (template.members.length === 0) {
@@ -69,7 +76,9 @@ export function instantiateTeam(
 
   return template.members.map((member) => {
     if (keys.has(member.key)) {
-      throw new Error(`Team template contains duplicate member key: ${member.key}`);
+      throw new Error(
+        `Team template contains duplicate member key: ${member.key}`,
+      );
     }
     keys.add(member.key);
 

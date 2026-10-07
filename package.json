@@ -6,8 +6,18 @@
   "packageManager": "pnpm@11.1.2",
   "scripts": {
     "dev": "pnpm --filter @stave/desktop start",
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
     "test": "pnpm --recursive test",
     "typecheck": "pnpm --recursive typecheck",
-    "check": "pnpm typecheck && pnpm test"
+    "verify": "biome ci --error-on-warnings . && pnpm typecheck && pnpm test",
+    "check": "pnpm verify"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.15"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

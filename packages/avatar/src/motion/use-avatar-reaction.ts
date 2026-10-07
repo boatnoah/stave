@@ -2,7 +2,10 @@ import { useEffect, useRef, useState } from "react";
 
 import type { AvatarStatus } from "../types";
 
-export type AvatarReaction = Extract<AvatarStatus, "blocked" | "done" | "failed">;
+export type AvatarReaction = Extract<
+  AvatarStatus,
+  "blocked" | "done" | "failed"
+>;
 
 const reactionStatuses = new Set<AvatarStatus>(["blocked", "done", "failed"]);
 

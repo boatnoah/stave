@@ -1,5 +1,5 @@
 import { AgentAvatar, type AvatarStatus } from "@stave/avatar";
-import { useEffect, useReducer, useRef, useState, type FormEvent } from "react";
+import { type FormEvent, useEffect, useReducer, useRef, useState } from "react";
 
 import type {
   AgentSnapshot,
@@ -133,6 +133,7 @@ function TeamMember({
           <h3>{agent.displayName}</h3>
           <span
             className={`presence presence--${status}`}
+            role="img"
             aria-label={status}
           />
         </div>
@@ -170,6 +171,7 @@ export function App() {
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const ticketDialogRef = useRef<HTMLDialogElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reopen the dialog whenever the selected ticket changes.
   useEffect(() => {
     const dialog = ticketDialogRef.current;
     if (!dialog || view !== "project") return;
@@ -177,6 +179,7 @@ export function App() {
     return () => dialog.close();
   }, [selectedTicketId, view]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: bumping retry re-subscribes after a failed load.
   useEffect(() => {
     let disposed = false;
     let unsubscribe: (() => void) | undefined;
@@ -277,7 +280,9 @@ export function App() {
   const selectedTicket = snapshot?.tickets.find(
     (ticket) => ticket.id === selectedTicketId,
   );
-  const selectedRun = snapshot?.runs.find((run) => run.id === selectedTicket?.runId);
+  const selectedRun = snapshot?.runs.find(
+    (run) => run.id === selectedTicket?.runId,
+  );
   const completedCount =
     snapshot?.tickets.filter((ticket) => ticket.stage === "done").length ?? 0;
   const activeCount =
@@ -317,22 +322,35 @@ export function App() {
       : ["simulation"];
     return (
       <div className="run-options">
-        {modes.filter((mode) => ticket.runId === null || ticket.mode === mode).map((mode) => (
-          <button
-            key={mode}
-            type="button"
-            className={`button button--small ${mode === "codex" ? "button--primary" : "button--quiet"}`}
-            disabled={busy || preparingTicketId !== null || pending.has("repository") || activeCount > 0}
-            onClick={() => void command(ticket.id, () => window.stave.runs.start({ ticketId: ticket.id, mode }))}
-          >
-            {preparingTicketId === ticket.id
-              ? "Preparing…"
-              : busy
-                ? "Starting…"
-                : mode === "codex" ? "Run Codex" : "Run simulation"}
-            <span aria-hidden="true">↗</span>
-          </button>
-        ))}
+        {modes
+          .filter((mode) => ticket.runId === null || ticket.mode === mode)
+          .map((mode) => (
+            <button
+              key={mode}
+              type="button"
+              className={`button button--small ${mode === "codex" ? "button--primary" : "button--quiet"}`}
+              disabled={
+                busy ||
+                preparingTicketId !== null ||
+                pending.has("repository") ||
+                activeCount > 0
+              }
+              onClick={() =>
+                void command(ticket.id, () =>
+                  window.stave.runs.start({ ticketId: ticket.id, mode }),
+                )
+              }
+            >
+              {preparingTicketId === ticket.id
+                ? "Preparing…"
+                : busy
+                  ? "Starting…"
+                  : mode === "codex"
+                    ? "Run Codex"
+                    : "Run simulation"}
+              <span aria-hidden="true">↗</span>
+            </button>
+          ))}
       </div>
     );
   }
@@ -340,13 +358,10 @@ export function App() {
   return (
     <>
       <header className="product-header">
-        <a
+        <button
+          type="button"
           className="brand"
-          href="#"
-          onClick={(event) => {
-            event.preventDefault();
-            setView("project");
-          }}
+          onClick={() => setView("project")}
           aria-label="Stave project"
         >
           <span className="brand__mark" aria-hidden="true">
@@ -354,7 +369,7 @@ export function App() {
           </span>
           stave
           <span className="brand__subtitle">A little team. Real progress.</span>
-        </a>
+        </button>
         <div className="product-header__actions">
           <span className="local-label">
             <span aria-hidden="true" />
@@ -579,6 +594,7 @@ export function App() {
                         placeholder="What should the team work on?"
                         required
                         maxLength={200}
+                        // biome-ignore lint/a11y/noAutofocus: the form opens in response to the user asking to add a ticket.
                         autoFocus
                         disabled={pending.has("ticket")}
                       />
@@ -607,7 +623,7 @@ export function App() {
                     </button>
                   </form>
                 )}
-                <div className="delivery-board" aria-label="Ticket board">
+                <section className="delivery-board" aria-label="Ticket board">
                   {stages.map((stage) => {
                     const tickets = snapshot.tickets.filter(
                       (ticket) => ticket.stage === stage.id,
@@ -650,7 +666,9 @@ export function App() {
                                   >
                                     {executionLabels[ticket.execution]}
                                   </span>
-                                  <span className={`work-ticket__mode work-ticket__mode--${ticket.mode}`}>
+                                  <span
+                                    className={`work-ticket__mode work-ticket__mode--${ticket.mode}`}
+                                  >
                                     {ticket.mode === "codex" ? "CODEX" : "SIM"}
                                   </span>
                                 </div>
@@ -702,7 +720,7 @@ export function App() {
                       </section>
                     );
                   })}
-                </div>
+                </section>
               </section>
               <section className="activity" aria-labelledby="activity-title">
                 <div className="section-kicker">
@@ -753,7 +771,9 @@ export function App() {
           onCancel={() => setSelectedTicketId(null)}
         >
           <div className="ticket-detail__heading">
-            <span className={`simulation-badge ${selectedTicket.mode === "codex" ? "simulation-badge--codex" : ""}`}>
+            <span
+              className={`simulation-badge ${selectedTicket.mode === "codex" ? "simulation-badge--codex" : ""}`}
+            >
               {selectedTicket.mode === "codex" ? "Codex" : "Simulation"}
             </span>
             <button
@@ -773,8 +793,14 @@ export function App() {
             {selectedTicket.description || "No description added."}
           </p>
           {selectedRun?.summary && (
-            <div className={`run-result run-result--${selectedTicket.execution}`} role="status">
-              <h3>{stages.find((stage) => stage.id === selectedRun.stage)?.label} · {executionLabels[selectedRun.state]}</h3>
+            <div
+              className={`run-result run-result--${selectedTicket.execution}`}
+              role="status"
+            >
+              <h3>
+                {stages.find((stage) => stage.id === selectedRun.stage)?.label}{" "}
+                · {executionLabels[selectedRun.state]}
+              </h3>
               <p>{selectedRun.summary}</p>
             </div>
           )}

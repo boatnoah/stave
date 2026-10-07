@@ -68,28 +68,51 @@ describe("createAvatarIdentity", () => {
       createAvatarIdentity(`agent-${index}`),
     );
 
-    expect(new Set(identities.map((identity) => identity.seedHash)).size).toBe(500);
-    expect(new Set(identities.map((identity) => identity.headShape)).size).toBe(10);
-    expect(new Set(identities.map((identity) => identity.hairStyle)).size).toBe(13);
-    expect(new Set(identities.map((identity) => identity.eyeStyle)).size).toBe(8);
-    expect(new Set(identities.map((identity) => identity.browStyle)).size).toBe(5);
-    expect(new Set(identities.map((identity) => identity.palette)).size).toBe(6);
-    expect(new Set(identities.map((identity) => identity.personality)).size).toBe(5);
-    expect(new Set(identities.map((identity) => identity.actingStyle)).size).toBe(5);
-    expect(identities.every((identity) => identity.blinkDurationMs >= 6_800)).toBe(true);
+    expect(new Set(identities.map((identity) => identity.seedHash)).size).toBe(
+      500,
+    );
+    expect(new Set(identities.map((identity) => identity.headShape)).size).toBe(
+      10,
+    );
+    expect(new Set(identities.map((identity) => identity.hairStyle)).size).toBe(
+      13,
+    );
+    expect(new Set(identities.map((identity) => identity.eyeStyle)).size).toBe(
+      8,
+    );
+    expect(new Set(identities.map((identity) => identity.browStyle)).size).toBe(
+      5,
+    );
+    expect(new Set(identities.map((identity) => identity.palette)).size).toBe(
+      6,
+    );
+    expect(
+      new Set(identities.map((identity) => identity.personality)).size,
+    ).toBe(5);
+    expect(
+      new Set(identities.map((identity) => identity.actingStyle)).size,
+    ).toBe(5);
+    expect(
+      identities.every((identity) => identity.blinkDurationMs >= 6_800),
+    ).toBe(true);
   });
 
   it("produces distinct landmark geometry for every head recipe", () => {
     const byShape = new Map(
-      Array.from({ length: 2_000 }, (_, index) => createAvatarIdentity(`shape-${index}`))
-        .map((identity) => [identity.headShape, identity] as const),
+      Array.from({ length: 2_000 }, (_, index) =>
+        createAvatarIdentity(`shape-${index}`),
+      ).map((identity) => [identity.headShape, identity] as const),
     );
     const geometries = [...byShape.values()].map(createAvatarGeometry);
 
     expect(byShape.size).toBe(10);
     expect(new Set(geometries.map((geometry) => geometry.headD)).size).toBe(10);
-    expect(Math.max(...geometries.map(({ bounds }) => bounds.right - bounds.left))).toBeGreaterThan(40);
-    expect(Math.max(...geometries.map(({ bounds }) => bounds.bottom - bounds.top))).toBeGreaterThan(53);
+    expect(
+      Math.max(...geometries.map(({ bounds }) => bounds.right - bounds.left)),
+    ).toBeGreaterThan(40);
+    expect(
+      Math.max(...geometries.map(({ bounds }) => bounds.bottom - bounds.top)),
+    ).toBeGreaterThan(53);
   });
 
   it("keeps asymmetric face anchors ordered inside their head bounds", () => {
@@ -98,13 +121,14 @@ describe("createAvatarIdentity", () => {
     );
 
     expect(
-      geometries.every(({ bounds, face }) =>
-        face.leftEye.x > bounds.left &&
-        face.rightEye.x < bounds.right &&
-        face.leftEye.x < face.rightEye.x &&
-        face.noseTop.y > Math.min(face.leftEye.y, face.rightEye.y) &&
-        face.mouth.y > face.noseBottom.y &&
-        face.mouth.y < bounds.bottom,
+      geometries.every(
+        ({ bounds, face }) =>
+          face.leftEye.x > bounds.left &&
+          face.rightEye.x < bounds.right &&
+          face.leftEye.x < face.rightEye.x &&
+          face.noseTop.y > Math.min(face.leftEye.y, face.rightEye.y) &&
+          face.mouth.y > face.noseBottom.y &&
+          face.mouth.y < bounds.bottom,
       ),
     ).toBe(true);
   });
@@ -125,8 +149,8 @@ describe("AgentAvatar", () => {
     expect(markup).toContain("data-palette=");
     expect(markup).toContain("data-personality=");
     expect(markup).toContain("data-acting-style=");
-    expect(markup).toContain("role=\"img\"");
-    expect(markup).toContain("aria-label=\"Arlo,");
+    expect(markup).toContain('role="img"');
+    expect(markup).toContain('aria-label="Arlo,');
     expect(markup).not.toContain("data-reaction=");
   });
 
@@ -141,8 +165,8 @@ describe("AgentAvatar", () => {
       />,
     );
 
-    expect(markup).toContain("aria-hidden=\"true\"");
-    expect(markup).not.toContain("role=\"img\"");
+    expect(markup).toContain('aria-hidden="true"');
+    expect(markup).not.toContain('role="img"');
   });
 
   it("exposes a static motion mode", () => {
@@ -156,7 +180,7 @@ describe("AgentAvatar", () => {
       />,
     );
 
-    expect(markup).toContain("data-motion=\"off\"");
+    expect(markup).toContain('data-motion="off"');
   });
 
   it("keeps pupils inside the blinking eye group", () => {
@@ -169,10 +193,14 @@ describe("AgentAvatar", () => {
       />,
     );
 
-    const eyeGroups = markup.match(/<g class="agent-avatar__eye agent-avatar__eye--(?:left|right)"[^>]*>.*?<\/g><\/g>/g);
+    const eyeGroups = markup.match(
+      /<g class="agent-avatar__eye agent-avatar__eye--(?:left|right)"[^>]*>.*?<\/g><\/g>/g,
+    );
 
     expect(eyeGroups).toHaveLength(2);
-    expect(eyeGroups?.every((group) => group.includes("agent-avatar__pupil"))).toBe(true);
+    expect(
+      eyeGroups?.every((group) => group.includes("agent-avatar__pupil")),
+    ).toBe(true);
   });
 
   it("preserves the version one drawing recipe", () => {
@@ -186,7 +214,7 @@ describe("AgentAvatar", () => {
       />,
     );
 
-    expect(markup).toContain("data-appearance-version=\"1\"");
+    expect(markup).toContain('data-appearance-version="1"');
     expect(markup).toContain("agent-avatar__pupils");
     expect(markup).toContain("M32.1 32.8 Q30.8 37.2 33.4 37.6");
     expect(markup).toContain("M29 43.1 Q32 43.7 35.2 43.1");
@@ -215,7 +243,7 @@ describe("AgentAvatar", () => {
       />,
     );
 
-    expect(thinking).toContain("data-detail=\"hero\"");
+    expect(thinking).toContain('data-detail="hero"');
     expect(thinking).toContain("agent-avatar__thought-cloud");
     expect(thinking).toContain("agent-avatar__mouth-rig");
     expect(failed).toContain("agent-avatar__tear-drop");
@@ -246,7 +274,8 @@ describe("AgentAvatar", () => {
     expect(markup.match(/agent-avatar__eye-lid"/g)).toHaveLength(2);
     expect(markup.match(/agent-avatar__eye-lid-cover/g)).toHaveLength(2);
 
-    if (eyeStyle === "bead") expect(markup).not.toContain("agent-avatar__eye-white");
+    if (eyeStyle === "bead")
+      expect(markup).not.toContain("agent-avatar__eye-white");
   });
 
   it("renders each friendly lid after its pupil so the lid can occlude the eye", () => {
@@ -266,7 +295,9 @@ describe("AgentAvatar", () => {
     expect(eyeGroups).toHaveLength(2);
     expect(
       eyeGroups?.every(
-        (group) => group.indexOf("agent-avatar__pupil") < group.indexOf("agent-avatar__eye-lid"),
+        (group) =>
+          group.indexOf("agent-avatar__pupil") <
+          group.indexOf("agent-avatar__eye-lid"),
       ),
     ).toBe(true);
   });

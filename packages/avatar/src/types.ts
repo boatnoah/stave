@@ -62,8 +62,19 @@ export type AccessoryStyle =
 export type NoseStyle = "curve" | "button" | "wedge" | "dash";
 export type MouthStyle = "small" | "wide" | "crooked" | "soft";
 export type FaceMark = "none" | "freckles" | "blush" | "mole" | "scar";
-export type AvatarPaletteName = "ink" | "clay" | "cocoa" | "ochre" | "rose" | "umber";
-export type AvatarPersonality = "calm" | "curious" | "focused" | "bright" | "wry";
+export type AvatarPaletteName =
+  | "ink"
+  | "clay"
+  | "cocoa"
+  | "ochre"
+  | "rose"
+  | "umber";
+export type AvatarPersonality =
+  | "calm"
+  | "curious"
+  | "focused"
+  | "bright"
+  | "wry";
 export type AvatarActingStyle =
   | "ponderer"
   | "mutterer"

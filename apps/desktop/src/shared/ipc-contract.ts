@@ -1,18 +1,18 @@
-import {
-  desktopAgentRoles,
-  type WorkspaceEvent,
-  type WorkspaceSnapshot,
-  type TicketStage,
-  type ExecutionState,
-  type RunMode,
-  type RunSnapshot,
-} from "./workspace-snapshot";
 import type {
   CreateProjectRequest,
   CreateTicketRequest,
   StartRunRequest,
   TicketRequest,
 } from "./desktop-api";
+import {
+  desktopAgentRoles,
+  type ExecutionState,
+  type RunMode,
+  type RunSnapshot,
+  type TicketStage,
+  type WorkspaceEvent,
+  type WorkspaceSnapshot,
+} from "./workspace-snapshot";
 
 export const ipcChannels = {
   getWorkspaceSnapshot: "stave:workspace:get-snapshot",
@@ -255,7 +255,11 @@ export function parseRepositoryRequest(value: unknown): {
     requireRecord(value, "Repository request").repositoryPath,
     "Repository path",
   );
-  if (repositoryPath.length > 4096 || /[\x00-\x1f]/u.test(repositoryPath))
+  if (
+    repositoryPath.length > 4096 ||
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: rejecting control characters is the point.
+    /[\x00-\x1f]/u.test(repositoryPath)
+  )
     throw new Error("Invalid repository path");
   return { repositoryPath };
 }

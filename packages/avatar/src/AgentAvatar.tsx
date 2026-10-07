@@ -1,4 +1,4 @@
-import { memo, useMemo, type CSSProperties } from "react";
+import { type CSSProperties, memo, useMemo } from "react";
 
 import { createAvatarIdentity } from "./engine/create-avatar-identity";
 import { getAvatarPalette } from "./engine/palettes";
@@ -114,47 +114,52 @@ export const AgentAvatar = memo(function AgentAvatar({
             browLift={expression.browLift}
             gazeY={expression.gazeY}
           />
-        ) : <g className="agent-avatar__presence">
-          <g className="agent-avatar__offset" transform={`translate(${identity.faceOffsetX} 0)`}>
-            <g className="agent-avatar__status-pose">
-              <g className="agent-avatar__reaction-pose">
-                <g className="agent-avatar__character">
-                  <HairBack geometry={geometry} style={identity.hairStyle} />
-                  <Head geometry={geometry} />
-                  <HairFront geometry={geometry} style={identity.hairStyle} />
-                  <Eyes
-                    accessory={identity.accessory}
-                    browAsymmetry={expression.browAsymmetry}
-                    browLift={expression.browLift}
-                    browStyle={identity.browStyle}
-                    eyeStyle={identity.eyeStyle}
-                    featureScale={identity.featureScale}
-                    friendlyLids={identity.appearanceVersion >= 4}
-                    gazeX={expression.gazeX}
-                    gazeY={expression.gazeY}
-                    geometry={geometry}
-                    personality={identity.personality}
-                    pupilSize={identity.pupilSize}
-                  />
-                  <FaceDetails
-                    faceMark={identity.faceMark}
-                    featureScale={identity.featureScale}
-                    geometry={geometry}
-                    mouth={expression.mouth}
-                    mouthStyle={identity.mouthStyle}
-                    noseStyle={identity.noseStyle}
-                  />
+        ) : (
+          <g className="agent-avatar__presence">
+            <g
+              className="agent-avatar__offset"
+              transform={`translate(${identity.faceOffsetX} 0)`}
+            >
+              <g className="agent-avatar__status-pose">
+                <g className="agent-avatar__reaction-pose">
+                  <g className="agent-avatar__character">
+                    <HairBack geometry={geometry} style={identity.hairStyle} />
+                    <Head geometry={geometry} />
+                    <HairFront geometry={geometry} style={identity.hairStyle} />
+                    <Eyes
+                      accessory={identity.accessory}
+                      browAsymmetry={expression.browAsymmetry}
+                      browLift={expression.browLift}
+                      browStyle={identity.browStyle}
+                      eyeStyle={identity.eyeStyle}
+                      featureScale={identity.featureScale}
+                      friendlyLids={identity.appearanceVersion >= 4}
+                      gazeX={expression.gazeX}
+                      gazeY={expression.gazeY}
+                      geometry={geometry}
+                      personality={identity.personality}
+                      pupilSize={identity.pupilSize}
+                    />
+                    <FaceDetails
+                      faceMark={identity.faceMark}
+                      featureScale={identity.featureScale}
+                      geometry={geometry}
+                      mouth={expression.mouth}
+                      mouthStyle={identity.mouthStyle}
+                      noseStyle={identity.noseStyle}
+                    />
+                  </g>
                 </g>
               </g>
+              <StatusEffects
+                actingStyle={identity.actingStyle}
+                dominantSide={identity.dominantSide}
+                geometry={geometry}
+                status={status}
+              />
             </g>
-            <StatusEffects
-              actingStyle={identity.actingStyle}
-              dominantSide={identity.dominantSide}
-              geometry={geometry}
-              status={status}
-            />
           </g>
-        </g>}
+        )}
       </svg>
     </span>
   );
