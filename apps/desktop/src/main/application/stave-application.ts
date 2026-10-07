@@ -1,55 +1,327 @@
-import { agentId, createProject, projectId, type Project } from "@stave/domain";
-
-import type { CreateProjectRequest } from "../../shared/desktop-api";
-import type { WorkspaceEvent, WorkspaceSnapshot } from "../../shared/workspace-snapshot";
+import { agentId, createProject, projectId } from "@stave/domain";
+import type {
+  CreateProjectRequest,
+  CreateTicketRequest,
+  StartRunRequest,
+  TicketRequest,
+} from "../../shared/desktop-api";
+import type {
+  AgentSnapshot,
+  ExecutionState,
+  RunSnapshot,
+  TicketSnapshot,
+  WorkspaceEvent,
+  WorkspaceSnapshot,
+} from "../../shared/workspace-snapshot";
 
 export type WorkspaceListener = (event: WorkspaceEvent) => void;
+export type WorkStage = RunSnapshot["stage"];
+export interface RunOutcome {
+  readonly state: Exclude<ExecutionState, "ready" | "running" | "interrupted">;
+  readonly summary: string;
+}
+export interface StageInput {
+  readonly ticket: TicketSnapshot;
+  readonly stage: WorkStage;
+  readonly agent: AgentSnapshot;
+  readonly signal: AbortSignal;
+  readonly onOutput: (text: string) => void;
+}
+export type StageRunner = (input: StageInput) => Promise<RunOutcome>;
+
+const roles = {
+  implementation: "engineer",
+  review: "tech_lead",
+  qa: "qa",
+} as const;
+const stages: readonly WorkStage[] = ["implementation", "review", "qa"];
+
+export const simulateStage: StageRunner = ({ stage, signal, onOutput }) =>
+  new Promise((resolve) => {
+    const finish = (state: "succeeded" | "canceled") => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", abort);
+      const summary =
+        state === "canceled"
+          ? "Simulation canceled"
+          : `Simulated ${stage} passed. No repository files were changed.`;
+      if (state === "succeeded") onOutput(`${summary}\n`);
+      resolve({ state, summary });
+    };
+    const abort = () => finish("canceled");
+    const timer = setTimeout(() => finish("succeeded"), 900);
+    signal.addEventListener("abort", abort, { once: true });
+    if (signal.aborted) abort();
+  });
 
 export class StaveApplication {
-  #project: Project | null = null;
-  #revision = 0;
+  #snapshot: WorkspaceSnapshot = {
+    revision: 0,
+    project: null,
+    tickets: [],
+    activity: [],
+    runs: [],
+  };
   readonly #listeners = new Set<WorkspaceListener>();
+  readonly #runner: StageRunner;
+  #active: {
+    ticketId: string;
+    controller: AbortController;
+    done: Promise<void>;
+  } | null = null;
+
+  constructor(runner: StageRunner = simulateStage) {
+    this.#runner = runner;
+  }
 
   getSnapshot(): WorkspaceSnapshot {
-    return {
-      revision: this.#revision,
-      project: this.#project === null ? null : {
-        id: this.#project.id,
-        name: this.#project.name,
-        repositoryPath: this.#project.repositoryPath,
-        teamTemplateId: this.#project.teamTemplateId,
-        teamTemplateVersion: this.#project.teamTemplateVersion,
-        agents: this.#project.agents.map((agent) => ({
-          id: agent.id,
-          displayName: agent.displayName,
-          role: agent.role,
-          avatarSeed: agent.avatarSeed,
-          enabled: agent.enabled,
-        })),
-      },
-    };
+    return structuredClone(this.#snapshot);
   }
 
   createProject(request: CreateProjectRequest): WorkspaceSnapshot {
+    if (this.#snapshot.project)
+      throw new Error("A project already exists in this workspace");
     const id = projectId(crypto.randomUUID());
-    this.#project = createProject({
+    const project = createProject({
       id,
       name: request.name,
       repositoryPath: request.repositoryPath,
       createAgentId: (member) => agentId(`${id}:${member.key}`),
     });
-    this.#revision += 1;
-    const snapshot = this.getSnapshot();
-    this.#emit({ type: "workspace.changed", snapshot });
-    return snapshot;
+    return this.#change(
+      {
+        ...this.#snapshot,
+        project: {
+          ...project,
+          agents: project.agents.map(
+            ({ id, displayName, role, avatarSeed, enabled }) => ({
+              id,
+              displayName,
+              role,
+              avatarSeed,
+              enabled,
+            }),
+          ),
+        },
+      },
+      null,
+      `Created ${project.name} with Maya, Alex, and Sam`,
+    );
+  }
+
+  createTicket(request: CreateTicketRequest): WorkspaceSnapshot {
+    if (!this.#snapshot.project) throw new Error("Create a project first");
+    const title = request.title.trim();
+    if (!title) throw new Error("Ticket title cannot be empty");
+    const ticket: TicketSnapshot = {
+      id: crypto.randomUUID(),
+      title,
+      description: request.description.trim(),
+      stage: "todo",
+      execution: "ready",
+      assignedAgentId: null,
+      runId: null,
+      output: "",
+      workspace: null,
+    };
+    return this.#change(
+      { ...this.#snapshot, tickets: [...this.#snapshot.tickets, ticket] },
+      ticket.id,
+      `Created ticket: ${title}`,
+    );
+  }
+
+  startRun(request: StartRunRequest): WorkspaceSnapshot {
+    if (this.#active)
+      throw new Error(
+        "A run is already active. Wait for it or cancel it first.",
+      );
+    const ticket = this.#ticket(request.ticketId);
+    if (ticket.stage === "done") throw new Error("This ticket is already done");
+    const project = this.#snapshot.project;
+    if (!project) throw new Error("Create a project first");
+    for (const role of Object.values(roles)) {
+      if (!project.agents.some((agent) => agent.enabled && agent.role === role))
+        throw new Error(`No enabled ${role} agent`);
+    }
+    const controller = new AbortController();
+    const active = { ticketId: ticket.id, controller, done: Promise.resolve() };
+    this.#active = active;
+    active.done = this.#execute(ticket.id, controller).finally(() => {
+      if (this.#active === active) this.#active = null;
+    });
+    return this.getSnapshot();
+  }
+
+  async cancelRun(request: TicketRequest): Promise<WorkspaceSnapshot> {
+    const active = this.#active;
+    if (!active || active.ticketId !== request.ticketId)
+      throw new Error("This ticket has no active run");
+    active.controller.abort();
+    await active.done;
+    return this.getSnapshot();
+  }
+
+  async shutdown(): Promise<void> {
+    const active = this.#active;
+    if (active) {
+      active.controller.abort();
+      await active.done;
+    }
   }
 
   subscribe(listener: WorkspaceListener): () => void {
     this.#listeners.add(listener);
-    return () => this.#listeners.delete(listener);
+    return () => {
+      this.#listeners.delete(listener);
+    };
   }
 
-  #emit(event: WorkspaceEvent): void {
-    for (const listener of this.#listeners) listener(event);
+  async #execute(ticketId: string, controller: AbortController): Promise<void> {
+    try {
+      const initialStage = this.#ticket(ticketId).stage;
+      const first =
+        initialStage === "todo"
+          ? 0
+          : stages.findIndex((stage) => stage === initialStage);
+      for (const stage of stages.slice(first)) {
+        if (controller.signal.aborted) break;
+        const agent = this.#snapshot.project?.agents.find(
+          (candidate) => candidate.role === roles[stage] && candidate.enabled,
+        );
+        if (!agent) throw new Error(`No enabled ${roles[stage]} agent`);
+        const run: RunSnapshot = {
+          id: crypto.randomUUID(),
+          ticketId,
+          agentId: agent.id,
+          stage,
+          state: "running",
+          summary: "",
+        };
+        this.#change(
+          {
+            ...this.#snapshot,
+            tickets: this.#snapshot.tickets.map((ticket) =>
+              ticket.id === ticketId
+                ? {
+                    ...ticket,
+                    stage,
+                    execution: "running",
+                    runId: run.id,
+                    assignedAgentId: agent.id,
+                  }
+                : ticket,
+            ),
+            runs: [...this.#snapshot.runs, run],
+          },
+          ticketId,
+          `${agent.displayName} started simulated ${stage}`,
+        );
+        const outcome = await this.#runner({
+          ticket: this.#ticket(ticketId),
+          stage,
+          agent,
+          signal: controller.signal,
+          onOutput: (text) => {
+            if (!controller.signal.aborted)
+              this.#updateTicket(ticketId, {
+                output: (this.#ticket(ticketId).output + text).slice(-100_000),
+              });
+          },
+        });
+        const state = controller.signal.aborted ? "canceled" : outcome.state;
+        this.#change(
+          {
+            ...this.#snapshot,
+            tickets: this.#snapshot.tickets.map((ticket) =>
+              ticket.id === ticketId
+                ? {
+                    ...ticket,
+                    execution: state,
+                    stage:
+                      state === "succeeded" && stage === "qa" ? "done" : stage,
+                  }
+                : ticket,
+            ),
+            runs: this.#snapshot.runs.map((candidate) =>
+              candidate.id === run.id
+                ? { ...candidate, state, summary: outcome.summary }
+                : candidate,
+            ),
+          },
+          ticketId,
+          outcome.summary,
+        );
+        if (state !== "succeeded") return;
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Run failed";
+      const ticket = this.#ticket(ticketId);
+      this.#change(
+        {
+          ...this.#snapshot,
+          tickets: this.#snapshot.tickets.map((candidate) =>
+            candidate.id === ticketId
+              ? { ...candidate, execution: "failed" }
+              : candidate,
+          ),
+          runs: this.#snapshot.runs.map((run) =>
+            run.id === ticket.runId
+              ? { ...run, state: "failed", summary: message }
+              : run,
+          ),
+        },
+        ticketId,
+        message,
+      );
+    }
+  }
+
+  #ticket(id: string): TicketSnapshot {
+    const ticket = this.#snapshot.tickets.find(
+      (candidate) => candidate.id === id,
+    );
+    if (!ticket) throw new Error("Ticket not found");
+    return ticket;
+  }
+
+  #updateTicket(id: string, patch: Partial<TicketSnapshot>): void {
+    this.#change({
+      ...this.#snapshot,
+      tickets: this.#snapshot.tickets.map((ticket) =>
+        ticket.id === id ? { ...ticket, ...patch } : ticket,
+      ),
+    });
+  }
+
+  #change(
+    snapshot: WorkspaceSnapshot,
+    ticketId?: string | null,
+    message?: string,
+  ): WorkspaceSnapshot {
+    this.#snapshot = {
+      ...snapshot,
+      revision: this.#snapshot.revision + 1,
+      activity: message
+        ? [
+            ...snapshot.activity,
+            {
+              id: crypto.randomUUID(),
+              ticketId: ticketId ?? null,
+              message,
+              createdAt: new Date().toISOString(),
+            },
+          ].slice(-500)
+        : snapshot.activity,
+    };
+    const result = this.getSnapshot();
+    for (const listener of this.#listeners) {
+      try {
+        listener({ type: "workspace.changed", snapshot: result });
+      } catch {
+        /* A closed renderer cannot stop a run. */
+      }
+    }
+    return result;
   }
 }

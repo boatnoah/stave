@@ -35,9 +35,18 @@ Before driving the app, confirm that the expected Stave renderer owns the chosen
 node .cursor/skills/verify-stave/scripts/verify.mjs doctor "$VERIFY_PORT"
 ```
 
-The doctor fails unless CDP exposes a page titled `Stave` with the current avatar-study surface and its state-preview controls. A failed doctor means the instance is not worth driving. Inspect `$VERIFY_STATE/launcher.log`, clean up that instance, and launch again.
+The doctor fails unless CDP exposes a page titled `Stave` with the product workspace or avatar lab. A failed doctor means the instance is not worth driving. Inspect `$VERIFY_STATE/launcher.log`, clean up that instance, and launch again.
 
 ## Drive
+
+Verify a fresh product workspace with:
+
+```bash
+node .cursor/skills/verify-stave/scripts/verify.mjs drive-workflow "$VERIFY_PORT" "$VERIFY_EVIDENCE"
+```
+
+This creates a project and ticket through the visible forms, cancels a simulated run, restarts it, verifies all three role handoffs and completion, and captures the board. Use a fresh isolated profile.
+
 
 Drive the current state-preview feature through stable visible labels:
 
