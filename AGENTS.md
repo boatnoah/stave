@@ -17,9 +17,12 @@ Run everything from the repository root. Node 24+ and pnpm 11.
 | Test all packages | `pnpm test` |
 | One package | `pnpm --filter @stave/<name> test` |
 | One test file | `pnpm --filter @stave/desktop exec vitest run src/shared/ipc-contract.test.ts` |
+| Coverage report | `pnpm test:coverage` (HTML in `coverage/`) |
+| Unused files, exports, dependencies | `pnpm knip` |
+| Package and run end-to-end tests | `pnpm e2e` (macOS; drives the real app with Playwright) |
 | Run the app | `pnpm dev` |
 
-Work is done when `pnpm verify` passes. CI runs the same command on Linux and macOS, and `main` only accepts squash-merged PRs whose `CI` check passed.
+Work is done when `pnpm verify` passes, plus `pnpm e2e` for UI or main-process changes. CI runs both, on Linux and macOS, and `main` only accepts squash-merged PRs whose `CI` check passed.
 
 ## Layout
 
@@ -44,12 +47,12 @@ Read the matching `docs/specs/*.md` before changing a feature, and update it in 
 
 ## Rules
 
-- **Dependency direction.** The renderer imports only `domain`, `avatar`, and `src/shared`. Only the main process may import `db`, `git-workspace`, `agent-runtime`, or Node built-ins. `domain` and `avatar` never import Node or Electron.
+- **Dependency direction.** The renderer imports only `domain`, `avatar`, and `src/shared`. Only the main process may import `db`, `git-workspace`, `agent-runtime`, or Node built-ins. `domain` and `avatar` never import Node or Electron. Biome enforces this through overrides in `biome.json`.
 - **IPC is untrusted input.** Every IPC payload and persisted snapshot passes through a parser in `src/shared/ipc-contract.ts`. Add a parser and a test when adding a field or channel. Persisted data must stay readable: give new fields a default for older snapshots.
 - **Electron security.** Keep `contextIsolation`, `sandbox`, `nodeIntegration: false`, the navigation guards, and the fuses in `forge.config.ts`.
 - **Codex runs stay local.** Never add pushes, PR creation, network access, or approvals to the runtime policy. See `docs/specs/codex-runtime.md`.
 - **Avatar identity is a persisted contract.** Never change how an existing appearance version renders; add a new version instead.
-- **Tests.** Behaviour changes need tests. Prefer real Git repositories, real SQLite, and the fake app-server fixture over mocks.
+- **Tests.** Behaviour changes need tests. Unit tests live next to the code as `*.test.ts`; end-to-end tests live in `apps/desktop/e2e/` as `*.spec.ts`. Coverage has a floor in `vitest.coverage.config.mts`. Prefer real Git repositories, real SQLite, and the fake app-server fixture over mocks.
 - **Style.** Biome owns formatting. Do not hand-format or add another formatter. Use `// biome-ignore <rule>: <reason>` only with a real reason.
 
 ## Never

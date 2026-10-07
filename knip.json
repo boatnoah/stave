@@ -1,0 +1,17 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": [".agents/skills/*/scripts/*.mjs", ".claude/hooks/*.mjs"]
+    },
+    "apps/desktop": {
+      "entry": [
+        "src/main.ts",
+        "src/preload.ts",
+        "forge.config.ts",
+        "vite.*.config.mts",
+        "e2e/**/*.spec.ts"
+      ]
+    }
+  }
+}

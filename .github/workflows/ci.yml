@@ -15,12 +15,34 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  # Unit tests never launch Electron; skip the large binary download.
+  # Unit tests never launch Electron; jobs that do unset this.
   ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
 
 jobs:
+  changes:
+    name: Detect code changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - id: filter
+        name: Skip app builds for docs-only changes
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          if [ -z "$BASE" ]; then echo "code=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          if git diff --name-only "$BASE"...HEAD | grep -qvE '^(docs/|\.github/ISSUE_TEMPLATE/)|\.md$'; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
   lint:
-    name: Format and lint
+    name: Format, lint, and unused code
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -31,10 +53,12 @@ jobs:
           node-version-file: .node-version
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Biome
+      - name: Biome (format, lint, import boundaries)
         run: pnpm exec biome ci --error-on-warnings --reporter=github .
+      - name: Knip (unused files, exports, dependencies)
+        run: pnpm knip
       - if: failure()
-        run: echo "::notice::Run 'pnpm lint:fix' locally to apply formatting and safe lint fixes."
+        run: echo "::notice::Run 'pnpm lint:fix' to apply formatting and safe fixes, and 'pnpm knip' to list unused code."
 
   test:
     name: Typecheck and test (${{ matrix.os }})
@@ -53,22 +77,68 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm test
+      - if: runner.os == 'macOS'
+        run: pnpm test
+      - if: runner.os == 'Linux'
+        name: Test with coverage
+        run: pnpm test:coverage
+      - if: runner.os == 'Linux' && !cancelled()
+        name: Coverage summary
+        run: |
+          node -e '
+            const t = require("./coverage/coverage-summary.json").total;
+            const rows = ["lines","statements","functions","branches"]
+              .map((k) => `| ${k} | ${t[k].pct}% | ${t[k].covered}/${t[k].total} |`);
+            console.log(["### Coverage", "", "| Metric | % | Covered |", "| --- | --- | --- |", ...rows].join("\n"));
+          ' >> "$GITHUB_STEP_SUMMARY"
+      - if: runner.os == 'Linux' && !cancelled()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 14
+
+  app:
+    name: Package and end-to-end (macOS)
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: macos-latest
+    timeout-minutes: 20
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Package the app
+        run: pnpm --filter @stave/desktop package
+      - name: End-to-end tests
+        run: pnpm --filter @stave/desktop e2e
+      - if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: e2e-results
+          path: apps/desktop/test-results/
+          retention-days: 14
 
   # The single required check. Add new jobs to `needs` instead of editing
-  # branch protection.
+  # branch protection. Skipped jobs (docs-only changes) count as passing.
   ci:
     name: CI
     if: always()
-    needs: [lint, test]
+    needs: [changes, lint, test, app]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Require every job to succeed
+      - name: Require every job to succeed or be skipped
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
         run: |
           echo "Job results: $RESULTS"
           for result in $RESULTS; do
-            [ "$result" = "success" ] || exit 1
+            case "$result" in success|skipped) ;; *) exit 1 ;; esac
           done

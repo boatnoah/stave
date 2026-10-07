@@ -19,7 +19,7 @@ import type { StaveStore } from "./persistence";
 
 export type WorkspaceListener = (event: WorkspaceEvent) => void;
 export type WorkStage = RunSnapshot["stage"];
-export interface RunOutcome {
+interface RunOutcome {
   readonly state: Exclude<ExecutionState, "ready" | "running" | "interrupted">;
   readonly summary: string;
 }
@@ -39,7 +39,7 @@ const roles = {
 } as const;
 const stages: readonly WorkStage[] = ["implementation", "review", "qa"];
 
-export const simulateStage: StageRunner = ({ stage, signal, onOutput }) =>
+const simulateStage: StageRunner = ({ stage, signal, onOutput }) =>
   new Promise((resolve, reject) => {
     const finish = (state: "succeeded" | "canceled") => {
       clearTimeout(timer);

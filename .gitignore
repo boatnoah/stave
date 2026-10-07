@@ -16,3 +16,5 @@ artifacts/verification/
 assets/avatars/exports/*
 !assets/avatars/exports/README.md
 .claude/settings.local.json
+test-results/
+playwright-report/

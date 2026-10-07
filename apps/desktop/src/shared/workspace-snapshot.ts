@@ -9,7 +9,7 @@ export interface AgentSnapshot {
   readonly enabled: boolean;
 }
 
-export interface ProjectSnapshot {
+interface ProjectSnapshot {
   readonly id: string;
   readonly name: string;
   readonly repositoryPath: string | null;
@@ -58,7 +58,7 @@ export interface TicketSnapshot {
     readonly dirty: boolean;
   } | null;
 }
-export interface ActivityEntry {
+interface ActivityEntry {
   readonly id: string;
   readonly ticketId: string | null;
   readonly message: string;
