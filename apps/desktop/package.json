@@ -16,7 +16,8 @@
     "@stave/domain": "workspace:*",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "@stave/db": "workspace:*"
+    "@stave/db": "workspace:*",
+    "@stave/git-workspace": "workspace:*"
   },
   "devDependencies": {
     "@electron-forge/cli": "8.0.0-alpha.10",

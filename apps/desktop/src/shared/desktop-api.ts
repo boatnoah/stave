@@ -5,6 +5,10 @@ export interface CreateProjectRequest {
   readonly repositoryPath?: string;
 }
 
+export interface RepositoryRequest {
+  readonly repositoryPath: string;
+}
+
 export interface CreateTicketRequest {
   readonly title: string;
   readonly description: string;
@@ -23,9 +27,15 @@ export interface StaveDesktopApi {
     readonly getSnapshot: () => Promise<WorkspaceSnapshot>;
   };
   readonly projects: {
+    readonly setRepository: (
+      request: RepositoryRequest,
+    ) => Promise<WorkspaceSnapshot>;
     readonly create: (
       request: CreateProjectRequest,
     ) => Promise<WorkspaceSnapshot>;
+  };
+  readonly workspaces: {
+    readonly prepare: (request: TicketRequest) => Promise<WorkspaceSnapshot>;
   };
   readonly tickets: {
     readonly create: (

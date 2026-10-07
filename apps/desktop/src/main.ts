@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
 import path from "node:path";
 import { mkdirSync } from "node:fs";
+import { createOrReuseWorkspace } from "@stave/git-workspace";
 import { openStaveStore } from "./main/application/persistence";
 import { pathToFileURL } from "node:url";
 
@@ -18,12 +19,27 @@ try {
   app.setPath("userData", dataDirectory);
   if (!app.requestSingleInstanceLock()) app.exit(0);
   store = openStaveStore(path.join(dataDirectory, "stave.sqlite"));
-  staveApplication = new StaveApplication(undefined, store, (error) => {
-    dialog.showErrorBox("Stave could not save this run", `${error instanceof Error ? error.message : String(error)}\nStave will close to preserve the last saved state. Reopen it after resolving the storage problem.`);
-    app.exit(1);
-  });
+  staveApplication = new StaveApplication(
+    undefined,
+    store,
+    (error) => {
+      dialog.showErrorBox(
+        "Stave could not save this run",
+        `${error instanceof Error ? error.message : String(error)}\nStave will close to preserve the last saved state. Reopen it after resolving the storage problem.`,
+      );
+      app.exit(1);
+    },
+    (input) =>
+      createOrReuseWorkspace({
+        ...input,
+        workspaceRoot: path.join(dataDirectory, "workspaces"),
+      }),
+  );
 } catch (error) {
-  dialog.showErrorBox("Stave could not open your workspace", `${error instanceof Error ? error.message : String(error)}\nYour existing data has been kept. Quit other Stave instances or restore a valid database before reopening.`);
+  dialog.showErrorBox(
+    "Stave could not open your workspace",
+    `${error instanceof Error ? error.message : String(error)}\nYour existing data has been kept. Quit other Stave instances or restore a valid database before reopening.`,
+  );
   app.exit(1);
   throw error;
 }

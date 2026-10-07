@@ -19,6 +19,9 @@ importers:
       '@stave/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@stave/git-workspace':
+        specifier: workspace:*
+        version: link:../../packages/git-workspace
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -104,6 +107,18 @@ importers:
 
   packages/domain:
     devDependencies:
+      typescript:
+        specifier: ^7.0.2
+        version: 7.0.2
+      vitest:
+        specifier: ^4.1.10
+        version: 4.1.10(@types/node@26.2.0)(vite@8.2.1(@types/node@26.2.0)(jiti@2.7.0))
+
+  packages/git-workspace:
+    devDependencies:
+      '@types/node':
+        specifier: ^26.2.0
+        version: 26.2.0
       typescript:
         specifier: ^7.0.2
         version: 7.0.2

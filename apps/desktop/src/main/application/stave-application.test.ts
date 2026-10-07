@@ -12,6 +12,76 @@ function setup(runner?: StageRunner) {
   return { app, ticket };
 }
 describe("StaveApplication", () => {
+  it("serializes workspace preparation and preserves existing dirty workspace details", async () => {
+    let ready: (value: {
+      path: string;
+      branch: string;
+      dirty: boolean;
+    }) => void = () => {};
+    const provider = vi.fn(
+      () =>
+        new Promise<{ path: string; branch: string; dirty: boolean }>(
+          (resolve) => {
+            ready = resolve;
+          },
+        ),
+    );
+    const app = new StaveApplication(undefined, undefined, undefined, provider);
+    app.createProject({ name: "Git", repositoryPath: "/repo" });
+    const ticket = app.createTicket({ title: "Ticket", description: "" })
+      .tickets[0];
+    if (!ticket) throw new Error("Missing ticket");
+    const preparing = app.prepareWorkspace({ ticketId: ticket.id });
+    await expect(app.prepareWorkspace({ ticketId: ticket.id })).rejects.toThrow(
+      "active work",
+    );
+    expect(() =>
+      app.startRun({ ticketId: ticket.id, mode: "simulation" }),
+    ).toThrow("already active");
+    expect(() => app.setRepository({ repositoryPath: "/other" })).toThrow(
+      "cannot change",
+    );
+    ready({ path: "/work/ticket", branch: "stave/ticket/a", dirty: true });
+    const prepared = await preparing;
+    expect(prepared.tickets[0]?.workspace).toEqual({
+      path: "/work/ticket",
+      branch: "stave/ticket/a",
+      dirty: true,
+    });
+    expect(provider).toHaveBeenCalledWith({
+      repositoryPath: "/repo",
+      ticketId: ticket.id,
+    });
+    expect(() => app.setRepository({ repositoryPath: "/other" })).toThrow(
+      "cannot change",
+    );
+  });
+  it("leaves a failed workspace preparation retryable without replacing ticket state", async () => {
+    const app = new StaveApplication(
+      undefined,
+      undefined,
+      undefined,
+      async () => {
+        throw new Error("Invalid repository");
+      },
+    );
+    app.createProject({ name: "Git" });
+    const ticket = app.createTicket({ title: "Ticket", description: "" })
+      .tickets[0];
+    if (!ticket) throw new Error("Missing ticket");
+    await expect(app.prepareWorkspace({ ticketId: ticket.id })).rejects.toThrow(
+      "repository path",
+    );
+    app.setRepository({ repositoryPath: "/missing" });
+    await expect(app.prepareWorkspace({ ticketId: ticket.id })).rejects.toThrow(
+      "Invalid repository",
+    );
+    expect(app.getSnapshot().tickets[0]?.workspace).toBeNull();
+    expect(() =>
+      app.setRepository({ repositoryPath: "/corrected" }),
+    ).not.toThrow();
+  });
+
   it("creates the project team and valid wire snapshots, and unsubscribes", () => {
     const app = new StaveApplication();
     const listener = vi.fn();
