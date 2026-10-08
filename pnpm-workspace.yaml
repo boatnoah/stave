@@ -15,3 +15,9 @@ allowBuilds:
   macos-alias: true
   # `pnpm prepare` installs the Git hooks; the package postinstall is unneeded.
   lefthook: false
+
+# Security floors for transitive build-tool dependencies. Remove each once the
+# parent package ships the fix.
+overrides:
+  # GHSA advisories fixed in 6.28.1; reached via node-gyp in Electron Forge.
+  "undici@>=6 <6.28.1": "^6.28.1"
