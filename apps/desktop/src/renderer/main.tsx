@@ -1,6 +1,12 @@
 import { Component, type ReactNode, StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 
+import "@fontsource/lato/400.css";
+import "@fontsource/lato/700.css";
+import "@fontsource/lato/900.css";
+import "@fontsource/red-hat-mono/400.css";
+import "@fontsource/red-hat-mono/500.css";
+
 import { App } from "./App";
 import "./styles.css";
 

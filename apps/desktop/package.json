@@ -14,6 +14,8 @@
     "e2e": "playwright test"
   },
   "dependencies": {
+    "@fontsource/lato": "^5.3.0",
+    "@fontsource/red-hat-mono": "^5.3.0",
     "@stave/agent-runtime": "workspace:*",
     "@stave/avatar": "workspace:*",
     "@stave/db": "workspace:*",
