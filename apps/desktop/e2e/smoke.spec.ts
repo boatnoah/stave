@@ -8,6 +8,7 @@ import {
   type Page,
   test,
 } from "@playwright/test";
+import { electronEnvironment } from "./electron-environment";
 
 const appDirectory = path.resolve(__dirname, "..");
 let dataDirectory: string;
@@ -15,7 +16,7 @@ let dataDirectory: string;
 async function launch(): Promise<{ app: ElectronApplication; page: Page }> {
   const app = await electron.launch({
     args: [appDirectory],
-    env: { ...process.env, STAVE_DATA_DIR: dataDirectory },
+    env: electronEnvironment({ dataDirectory }),
   });
   const page = await app.firstWindow();
   return { app, page };
