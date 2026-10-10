@@ -93,7 +93,7 @@ button {
 }
 
 .eyebrow {
-  color: var(--text-3);
+  color: var(--text-2);
   font-size: 11px;
   font-weight: 680;
   letter-spacing: 0.12em;
@@ -216,7 +216,7 @@ button {
 }
 
 .agent-study .agent-study__traits {
-  color: var(--text-3);
+  color: var(--text-2);
   font-family: var(--font-code);
   font-size: 9px;
   letter-spacing: 0.02em;
@@ -246,7 +246,7 @@ button {
 }
 
 .section-heading > p {
-  color: var(--text-3);
+  color: var(--text-2);
   font-size: 12px;
   margin: 0 0 3px;
 }
@@ -269,7 +269,7 @@ button {
 .task-card__meta,
 .task-card__footer {
   align-items: center;
-  color: var(--text-3);
+  color: var(--text-2);
   display: flex;
   font-size: 10px;
   justify-content: space-between;
@@ -498,7 +498,7 @@ button:disabled {
   background: var(--ink-3);
   border: 1px solid var(--line-strong);
   border-radius: 5px;
-  color: var(--waiting);
+  color: var(--text-2);
   display: inline-flex;
   font-size: 10px;
   font-weight: 550;
@@ -516,7 +516,7 @@ button:disabled {
 .simulation-badge--codex {
   background: var(--ink-3);
   border-color: var(--line-strong);
-  color: var(--done);
+  color: var(--accent);
 }
 .run-options {
   display: grid;
@@ -538,7 +538,10 @@ button:disabled {
   background: var(--ink-2);
   border-left-color: var(--failed);
 }
-.run-result.run-result--waiting_capacity,
+.run-result.run-result--waiting_capacity {
+  background: var(--ink-2);
+  border-left-color: var(--failed);
+}
 .run-result.run-result--waiting_user {
   background: var(--ink-2);
   border-left-color: var(--waiting);
@@ -647,18 +650,23 @@ button:disabled {
   height: 5px;
   width: 5px;
 }
-.presence--working,
+.presence--working {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px transparent;
+}
 .presence--reviewing {
-  background: var(--waiting);
+  background: var(--review);
   box-shadow: 0 0 0 3px transparent;
 }
 .presence--failed,
 .presence--blocked {
   background: var(--failed);
 }
-.presence--waiting,
-.presence--queued {
+.presence--waiting {
   background: var(--waiting);
+}
+.presence--queued {
+  background: var(--failed);
 }
 .crew-member__role {
   color: var(--text-2);
@@ -734,8 +742,8 @@ button:disabled {
   width: 7px;
 }
 .board-column--implementation .board-column__heading h3 > span {
-  background: var(--waiting);
-  border-color: var(--waiting);
+  background: var(--accent);
+  border-color: var(--accent);
 }
 .board-column--review .board-column__heading h3 > span {
   background: var(--review);
@@ -792,9 +800,11 @@ button:disabled {
 .execution-label {
   color: var(--text-2);
 }
-.execution-label--running,
+.execution-label--running {
+  color: var(--accent);
+}
 .execution-label--waiting_capacity {
-  color: var(--waiting);
+  color: var(--failed);
 }
 .execution-label--failed,
 .execution-label--interrupted {
