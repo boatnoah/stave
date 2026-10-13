@@ -134,6 +134,7 @@ function parseUserInputRequest(
 const MAX_LINE_BYTES = 1024 * 1024;
 const MAX_OUTPUT_BYTES = 2 * 1024 * 1024;
 const MAX_EARLY_EVENTS = 256;
+const MAX_EARLY_REQUESTS = 8;
 const DISABLED_FEATURES = [
   "apps",
   "plugins",
@@ -199,6 +200,7 @@ export async function runCodex(
   let finalAgentText = "";
   const streamedItems = new Map<string, string>();
   const earlyEvents: Notification[] = [];
+  const earlyRequests: Extract<ProtocolMessage, { kind: "request" }>[] = [];
   let finish: (outcome: Outcome) => void = () => {};
   const outcome = new Promise<Outcome>((resolveOutcome) => {
     finish = (result) => {
@@ -356,6 +358,19 @@ export async function runCodex(
     message: Extract<ProtocolMessage, { kind: "request" }>,
   ): void {
     const { method, id, params } = message;
+    if (
+      method === "item/tool/requestUserInput" &&
+      threadId !== undefined &&
+      turnId === undefined &&
+      params.threadId === threadId
+    ) {
+      if (earlyRequests.length >= MAX_EARLY_REQUESTS)
+        throw new Error(
+          "Codex sent too many requests before the turn response.",
+        );
+      earlyRequests.push(message);
+      return;
+    }
     if (method === "item/tool/requestUserInput" && options.onUserInput) {
       let request: CodexUserInputRequest;
       try {
@@ -594,6 +609,11 @@ export async function runCodex(
       }),
     );
     turnId = parseTurn(startedTurn.turn).id;
+    for (const request of earlyRequests) {
+      if (completed) break;
+      serverRequest(request);
+    }
+    earlyRequests.length = 0;
     for (const event of earlyEvents) {
       if (completed) break;
       notification(event);

@@ -88,37 +88,48 @@ input.on("line", (line) => {
     }
     if (mode === "early-events") success();
     if (mode === "early-user") ask("item/tool/requestUserInput");
-    response(message.id, { turn: turn("inProgress") });
     if (mode === "decision") {
       const prompt = message.params.input
         .map((item) => (item.type === "text" ? item.text : ""))
         .join("\n");
       if (prompt.includes("implementation stage")) {
-        ask("item/tool/requestUserInput", {
-          isBlocking: true,
-          questions: [
+        process.stdout.write(
+          `${JSON.stringify({ id: message.id, result: { turn: turn("inProgress") } })}\n${JSON.stringify(
             {
-              id: "migration-choice",
-              header: "Data migration",
-              question: "How should existing records be converted?",
-              options: [
-                {
-                  label: "Preserve existing data",
-                  description: "Keep all current values.",
-                },
-                {
-                  label: "Use the new defaults",
-                  description: "Reset values to the new defaults.",
-                },
-              ],
+              id: "server-request",
+              method: "item/tool/requestUserInput",
+              params: {
+                ...scope,
+                itemId: "item-1",
+                isBlocking: true,
+                questions: [
+                  {
+                    id: "migration-choice",
+                    header: "Data migration",
+                    question: "How should existing records be converted?",
+                    options: [
+                      {
+                        label: "Preserve existing data",
+                        description: "Keep all current values.",
+                      },
+                      {
+                        label: "Use the new defaults",
+                        description: "Reset values to the new defaults.",
+                      },
+                    ],
+                  },
+                ],
+              },
             },
-          ],
-        });
+          )}\n`,
+        );
       } else {
+        response(message.id, { turn: turn("inProgress") });
         success();
       }
       return;
     }
+    response(message.id, { turn: turn("inProgress") });
     if (
       [
         "early-events",
