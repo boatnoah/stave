@@ -120,7 +120,7 @@ async function doctor() {
     assert.ok(
       await evaluate(
         client,
-        "document.querySelector('.workspace') !== null || document.querySelector('.avatar-lab') !== null",
+        "document.querySelector('.shell-content') !== null || document.querySelector('.avatar-lab') !== null",
       ),
       "Stave product surface is missing",
     );
@@ -139,7 +139,11 @@ async function driveStatePreview() {
   const result = await withStaveClient(async (client, page) => {
     await evaluate(
       client,
-      "[...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Avatar lab')?.click()",
+      `(() => {
+        document.querySelector('button[aria-label="Open settings"]')?.click();
+        [...document.querySelectorAll('button')]
+          .find((button) => button.textContent.trim() === 'Open lab')?.click();
+      })()`,
     );
     await new Promise((resolve) => setTimeout(resolve, 100));
     await captureScreenshot(client, `${evidenceDirectory}/before.png`);
@@ -235,7 +239,7 @@ async function driveWorkflow() {
     await captureScreenshot(client, `${evidenceDirectory}/before.png`);
     await fill("project-name", "Workflow proof");
     await click("Create project");
-    await wait("document.querySelectorAll('.crew-member').length === 3");
+    await wait("document.querySelector('.board-page__header') !== null");
     await click("Add ticket");
     await fill("ticket-title", "Verify delivery workflow");
     await fill("ticket-description", "Pass implementation, review, and QA.");
@@ -253,14 +257,26 @@ async function driveWorkflow() {
     await wait(
       "document.querySelector('.board-column--done .work-ticket') !== null",
     );
+    await evaluate(
+      client,
+      "document.querySelector('.board-column--done .work-ticket__title').click()",
+    );
+    await wait("document.querySelector('.ticket-detail[open]') !== null");
     const observed = await evaluate(
       client,
-      `({team:[...document.querySelectorAll('.crew-member h3')].map(e=>e.textContent),done:document.querySelectorAll('.board-column--done .work-ticket').length,activity:document.querySelector('.activity-list').textContent})`,
+      `({
+        tabs: [...document.querySelectorAll('.shell-tabs button')].map((element) => element.textContent.trim()),
+        done: document.querySelectorAll('.board-column--done .work-ticket').length,
+        activity: document.querySelector('.ticket-activity').textContent,
+        output: document.querySelector('.run-output').textContent
+      })`,
     );
-    assert.deepEqual(observed.team, ["Maya", "Alex", "Sam"]);
+    assert.deepEqual(observed.tabs, ["Board", "Chat"]);
     assert.equal(observed.done, 1);
     assert.ok(observed.activity.includes("Simulation canceled"));
-    assert.ok(observed.activity.includes("Simulated qa passed"));
+    assert.ok(observed.output.includes("Simulated qa passed"));
+    await click("Close details");
+    await wait("document.querySelector('.ticket-detail[open]') === null");
     await captureScreenshot(client, `${evidenceDirectory}/after.png`);
     return {
       passed: true,
@@ -303,12 +319,17 @@ async function driveGit() {
     };
     await fill("project-name", "Git workspace proof");
     await click("Create project");
+    await evaluate(
+      client,
+      "document.querySelector('button[aria-label=\"Open settings\"]').click()",
+    );
     await wait("document.getElementById('project-repository-path') !== null");
     await fill("project-repository-path", process.env.VERIFY_REPOSITORY);
     await click("Save repository");
     await wait(
-      "document.querySelector('.project-heading').textContent.includes('stave-git-ui-repo')",
+      "window.stave.workspace.getSnapshot().then((snapshot) => snapshot.project.repositoryPath?.includes('stave-git-ui-repo'))",
     );
+    await click("Close settings");
     await click("Add ticket");
     await fill("ticket-title", "Preserve unfinished work");
     await click("Create ticket");
@@ -361,7 +382,7 @@ async function verifyRestored() {
     );
     const visible = await evaluate(
       client,
-      "({team:[...document.querySelectorAll('.crew-member h3')].map(e=>e.textContent),done:document.querySelectorAll('.board-column--done .work-ticket').length})",
+      "({tabs:[...document.querySelectorAll('.shell-tabs button')].map(e=>e.textContent.trim()),project:document.querySelector('.board-page__header h1')?.textContent,done:document.querySelectorAll('.board-column--done .work-ticket').length})",
     );
     assert.equal(snapshot.project.name, "Workflow proof");
     assert.equal(snapshot.tickets.length, 1);
@@ -370,7 +391,8 @@ async function verifyRestored() {
       snapshot.runs.map((r) => r.state),
       ["canceled", "succeeded", "succeeded", "succeeded"],
     );
-    assert.deepEqual(visible.team, ["Maya", "Alex", "Sam"]);
+    assert.deepEqual(visible.tabs, ["Board", "Chat"]);
+    assert.equal(visible.project, "Workflow proof");
     assert.equal(visible.done, 1);
     await captureScreenshot(client, `${evidenceDirectory}/restored.png`);
     return {
