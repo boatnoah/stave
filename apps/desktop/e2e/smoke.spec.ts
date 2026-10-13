@@ -40,8 +40,8 @@ test("runs a simulated ticket to done and restores it after restart", async () =
     page.getByRole("button", { name: "Board", exact: true }),
   ).toHaveAttribute("aria-current", "page");
 
-  await page.getByRole("button", { name: "Chat" }).click();
-  await expect(page.getByRole("heading", { name: "Team chat" })).toBeVisible();
+  await page.getByRole("button", { name: "Chat", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "#team" })).toBeVisible();
   await page.getByRole("button", { name: "Board", exact: true }).click();
 
   await page.keyboard.press("ControlOrMeta+k");
@@ -116,6 +116,32 @@ test("runs a simulated ticket to done and restores it after restart", async () =
   );
   await expect(page.locator(".run-output")).toContainText(
     "Simulated qa passed",
+  );
+  await page.getByRole("button", { name: "Chat", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "#team" })).toBeVisible();
+  await expect(page.locator(".chat-messages")).toContainText(
+    "Created ticket: Prove the board works",
+  );
+  await expect(page.locator(".chat-messages")).toContainText(
+    "Simulated qa passed",
+  );
+  await page
+    .getByRole("complementary", { name: "Chat navigation" })
+    .getByRole("button", { name: /STV-1 Prove the board works/ })
+    .click();
+  await expect(
+    page.getByRole("region", { name: "Ticket summary" }),
+  ).toContainText("Prove the board works");
+  await page.getByRole("button", { name: "Chat", exact: true }).click();
+  await page.getByRole("button", { name: "#releases" }).click();
+  await expect(page.getByRole("heading", { name: "#releases" })).toBeVisible();
+  await expect(page.locator(".chat-messages")).toContainText(
+    "Simulated qa passed",
+  );
+  await page.getByRole("button", { name: "Alex", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Alex" })).toBeVisible();
+  await expect(page.locator(".chat-messages")).toContainText(
+    "Alex started simulated implementation",
   );
   await first.app.close();
 

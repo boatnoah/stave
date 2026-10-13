@@ -118,6 +118,8 @@ Clicking a card opens a right inspector while the board remains visible. The ins
 
 Chat uses Lato. The earlier Recursive agent voice is not part of the product.
 
+Until messages can be sent, chat is read-only. The team channel shows project activity and run summaries, release shows successful QA runs, ticket threads show events for that ticket, and direct messages show run updates from that agent. A run summary appears once even though it is also recorded in activity.
+
 The sidebar sections appear in this order:
 
 1. Needs you lists waiting tickets with their key, short title, amber dot, and count.
