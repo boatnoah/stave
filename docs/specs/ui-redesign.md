@@ -83,6 +83,8 @@ Command-K opens a command menu that can jump to any ticket, channel, or agent. I
 
 Remove the landing-page header, hero copy, team cards on the home screen, and page-wide activity list. Move the project name and repository controls into a settings sheet.
 
+When the workspace takes longer than 300ms to open, show a centered stacked S mark on the app background. The mark makes one half-turn and rests between turns. Once the workspace is ready, fade and shrink the mark over 450ms while the board fades in. Skip the boot screen for faster starts. Keep the native window background at `#14120b` to avoid a light first frame. With reduced motion, keep the mark still and gently breathe the center bar.
+
 ## Ticket board
 
 The board uses Focus lanes at Airy density.
@@ -179,7 +181,8 @@ Each item ships as one pull request. `pnpm verify`, `pnpm e2e`, and real-app ver
 5. Add read-only chat from existing activity and run events.
 6. Add persistent user messages, mentions, slash commands, and thread replies.
 7. Add structured decisions and run resume.
-8. Add the final logo and app icon after a logo direction is selected.
+8. Use the stacked S from the boot-screen reference for the title bar and macOS app icon.
+9. Add the delayed boot screen and reveal animation from the same reference.
 
 ## Current defaults
 
