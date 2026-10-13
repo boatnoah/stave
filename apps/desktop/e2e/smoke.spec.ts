@@ -35,13 +35,42 @@ test("runs a simulated ticket to done and restores it after restart", async () =
 
   await page.locator("#project-name").fill("Smoke test");
   await page.getByRole("button", { name: "Create project" }).click();
-  await expect(page.locator(".crew-member h3")).toHaveText([
-    "Maya",
-    "Alex",
-    "Sam",
-  ]);
+  await expect(page.getByRole("heading", { name: "Smoke test" })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Board", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
 
-  await page.getByRole("button", { name: "Add ticket" }).click();
+  await page.getByRole("button", { name: "Chat" }).click();
+  await expect(page.getByRole("heading", { name: "Team chat" })).toBeVisible();
+  await page.getByRole("button", { name: "Board", exact: true }).click();
+
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(
+    page.getByRole("dialog", { name: "Command menu" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Open command menu" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Command menu" }),
+  ).toBeVisible();
+  await page.getByLabel("Search commands").fill("create");
+  await expect(
+    page.getByRole("button", { name: /Create ticket/ }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+
+  await page.getByRole("button", { name: "Open command menu" }).click();
+  await page.getByLabel("Search commands").fill("Maya");
+  await page.getByRole("button", { name: /Maya.*Direct message/ }).click();
+  await expect(page.getByRole("heading", { name: "Maya" })).toBeVisible();
+  await page.getByRole("button", { name: "Board", exact: true }).click();
+
+  await page.getByRole("button", { name: "Open settings" }).click();
+  await expect(page.getByLabel("Project name")).toHaveValue("Smoke test");
+  await page.getByRole("button", { name: "Close settings" }).click();
+
+  await page.keyboard.press("c");
   await page.locator("#ticket-title").fill("Prove the board works");
   await page.getByRole("button", { name: "Create ticket" }).click();
   await expect(page.locator(".work-ticket")).toHaveCount(1);
@@ -51,7 +80,10 @@ test("runs a simulated ticket to done and restores it after restart", async () =
     1,
     { timeout: 15_000 },
   );
-  await expect(page.locator(".activity-list")).toContainText(
+  await page
+    .getByRole("button", { name: "View details: Prove the board works" })
+    .click();
+  await expect(page.locator(".run-output")).toContainText(
     "Simulated qa passed",
   );
   await first.app.close();

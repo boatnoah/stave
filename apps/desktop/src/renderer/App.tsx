@@ -1,8 +1,14 @@
 import { AgentAvatar, type AvatarStatus } from "@stave/avatar";
-import { type FormEvent, useEffect, useReducer, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useReducer,
+  useRef,
+  useState,
+} from "react";
 
 import type {
-  AgentSnapshot,
   DesktopAgentRole,
   TicketSnapshot,
   WorkspaceSnapshot,
@@ -49,12 +55,6 @@ const stages: readonly {
   { id: "done", label: "Done" },
 ];
 
-const roleLabels: Record<DesktopAgentRole, string> = {
-  tech_lead: "Tech lead",
-  engineer: "Engineer",
-  qa: "Quality assurance",
-};
-
 const executionLabels: Record<TicketSnapshot["execution"], string> = {
   ready: "Ready to start",
   running: "Running",
@@ -64,6 +64,12 @@ const executionLabels: Record<TicketSnapshot["execution"], string> = {
   interrupted: "Interrupted",
   waiting_capacity: "Waiting for capacity",
   waiting_user: "Needs your input",
+};
+
+const roleLabels: Record<DesktopAgentRole, string> = {
+  tech_lead: "Tech lead",
+  engineer: "Engineer",
+  qa: "Quality assurance",
 };
 
 function avatarStatus(ticket: TicketSnapshot | undefined): AvatarStatus {
@@ -88,70 +94,49 @@ function avatarStatus(ticket: TicketSnapshot | undefined): AvatarStatus {
   }
 }
 
-function isActive(ticket: TicketSnapshot): boolean {
-  return (
-    ticket.execution === "running" ||
-    ticket.execution === "waiting_capacity" ||
-    ticket.execution === "waiting_user"
-  );
-}
-
 function errorMessage(error: unknown): string {
   return error instanceof Error
     ? error.message
     : "Something went wrong. Please try again.";
 }
 
-function TeamMember({
-  agent,
-  tickets,
+function Modal({
+  open,
+  className,
+  labelledBy,
+  onClose,
+  children,
 }: {
-  readonly agent: AgentSnapshot;
-  readonly tickets: readonly TicketSnapshot[];
+  readonly open: boolean;
+  readonly className: string;
+  readonly labelledBy: string;
+  readonly onClose: () => void;
+  readonly children: ReactNode;
 }) {
-  const assigned = tickets.filter(
-    (ticket) => ticket.assignedAgentId === agent.id,
-  );
-  const ticket = assigned.find(isActive) ?? assigned.at(-1);
-  const status = agent.enabled ? avatarStatus(ticket) : "idle";
+  const ref = useRef<HTMLDialogElement>(null);
+
+  useEffect(() => {
+    const dialog = ref.current;
+    if (!dialog) return;
+    if (open && !dialog.open) dialog.showModal();
+    if (!open && dialog.open) dialog.close();
+  }, [open]);
 
   return (
-    <article
-      className="crew-member"
-      data-agent-id={agent.id}
-      data-agent-status={status}
+    <dialog
+      ref={ref}
+      className={className}
+      aria-labelledby={labelledBy}
+      onCancel={onClose}
+      onClose={onClose}
     >
-      <AgentAvatar
-        agentId={agent.id}
-        name={agent.displayName}
-        avatarSeed={agent.avatarSeed}
-        status={status}
-        size={78}
-      />
-      <div className="crew-member__copy">
-        <div className="crew-member__heading">
-          <h3>{agent.displayName}</h3>
-          <span
-            className={`presence presence--${status}`}
-            role="img"
-            aria-label={status}
-          />
-        </div>
-        <p className="crew-member__role">{roleLabels[agent.role]}</p>
-        <p className="crew-member__activity">
-          {!agent.enabled
-            ? "Unavailable"
-            : ticket
-              ? `${executionLabels[ticket.execution]} · ${ticket.title}`
-              : "Ready for the next ticket"}
-        </p>
-      </div>
-    </article>
+      {children}
+    </dialog>
   );
 }
 
 export function App() {
-  const [view, setView] = useState<"project" | "avatars">("project");
+  const [view, setView] = useState<"board" | "chat" | "avatars">("board");
   const [workspace, dispatch] = useReducer(workspaceReducer, {
     status: "loading",
   });
@@ -169,15 +154,35 @@ export function App() {
   const [ticketTitle, setTicketTitle] = useState("");
   const [ticketDescription, setTicketDescription] = useState("");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
+  const [selectedChatAgentId, setSelectedChatAgentId] = useState<string | null>(
+    null,
+  );
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [needsOpen, setNeedsOpen] = useState(false);
+  const [commandOpen, setCommandOpen] = useState(false);
+  const [commandQuery, setCommandQuery] = useState("");
   const ticketDialogRef = useRef<HTMLDialogElement>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: reopen the dialog whenever the selected ticket changes.
   useEffect(() => {
     const dialog = ticketDialogRef.current;
-    if (!dialog || view !== "project") return;
+    if (!dialog || view !== "board") return;
     dialog.showModal();
     return () => dialog.close();
   }, [selectedTicketId, view]);
+
+  useEffect(() => {
+    const handleCommandShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        setSettingsOpen(false);
+        setNeedsOpen(false);
+        setCommandOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleCommandShortcut);
+    return () => window.removeEventListener("keydown", handleCommandShortcut);
+  }, []);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: bumping retry re-subscribes after a failed load.
   useEffect(() => {
@@ -280,11 +285,12 @@ export function App() {
   const selectedTicket = snapshot?.tickets.find(
     (ticket) => ticket.id === selectedTicketId,
   );
+  const selectedChatAgent = project?.agents.find(
+    (agent) => agent.id === selectedChatAgentId,
+  );
   const selectedRun = snapshot?.runs.find(
     (run) => run.id === selectedTicket?.runId,
   );
-  const completedCount =
-    snapshot?.tickets.filter((ticket) => ticket.stage === "done").length ?? 0;
   const activeCount =
     snapshot?.tickets.filter((ticket) => ticket.execution === "running")
       .length ?? 0;
@@ -296,6 +302,92 @@ export function App() {
     preparingTicketId !== null ||
     pending.has("repository") ||
     (snapshot?.tickets.some((ticket) => pending.has(ticket.id)) ?? false);
+  const waitingTickets =
+    snapshot?.tickets.filter((ticket) => ticket.execution === "waiting_user") ??
+    [];
+  const normalizedCommandQuery = commandQuery.trim().toLocaleLowerCase();
+  const matchesCommand = (label: string) =>
+    !normalizedCommandQuery ||
+    label.toLocaleLowerCase().includes(normalizedCommandQuery);
+
+  function closeCommandMenu() {
+    setCommandOpen(false);
+    setCommandQuery("");
+  }
+
+  function openCommandMenu() {
+    setSettingsOpen(false);
+    setNeedsOpen(false);
+    setCommandOpen(true);
+  }
+
+  function showBoard() {
+    setView("board");
+    setSettingsOpen(false);
+    setNeedsOpen(false);
+    closeCommandMenu();
+  }
+
+  function showChat() {
+    setSelectedChatAgentId(null);
+    setView("chat");
+    setSettingsOpen(false);
+    setNeedsOpen(false);
+    closeCommandMenu();
+  }
+
+  function showAgent(agentId: string) {
+    setSelectedChatAgentId(agentId);
+    setView("chat");
+    setSettingsOpen(false);
+    setNeedsOpen(false);
+    closeCommandMenu();
+  }
+
+  function showTicket(ticketId: string) {
+    setSelectedTicketId(ticketId);
+    setView("board");
+    setSettingsOpen(false);
+    closeCommandMenu();
+    setNeedsOpen(false);
+  }
+
+  function showTicketForm() {
+    setView("board");
+    setSelectedTicketId(null);
+    setSettingsOpen(false);
+    setNeedsOpen(false);
+    setTicketFormOpen(true);
+    closeCommandMenu();
+  }
+
+  useEffect(() => {
+    const createFromKeyboard = (event: KeyboardEvent) => {
+      const target = event.target;
+      const isEditing =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement;
+      if (
+        event.key.toLowerCase() !== "c" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        isEditing ||
+        view !== "board" ||
+        !project ||
+        settingsOpen ||
+        needsOpen ||
+        commandOpen ||
+        selectedTicketId
+      )
+        return;
+      event.preventDefault();
+      setTicketFormOpen(true);
+    };
+    window.addEventListener("keydown", createFromKeyboard);
+    return () => window.removeEventListener("keydown", createFromKeyboard);
+  }, [commandOpen, needsOpen, project, selectedTicketId, settingsOpen, view]);
 
   function runControls(ticket: TicketSnapshot) {
     const busy = pending.has(ticket.id);
@@ -357,37 +449,60 @@ export function App() {
 
   return (
     <>
-      <header className="product-header">
-        <button
-          type="button"
-          className="brand"
-          onClick={() => setView("project")}
-          aria-label="Stave project"
-        >
-          <span className="brand__mark" aria-hidden="true">
-            s
-          </span>
-          stave
-          <span className="brand__subtitle">A little team. Real progress.</span>
-        </button>
-        <div className="product-header__actions">
-          <span className="local-label">
-            <span aria-hidden="true" />
-            Local workspace
-          </span>
+      <header className="shell-titlebar">
+        <nav className="shell-tabs" aria-label="Primary">
           <button
             type="button"
-            className="text-button"
-            onClick={() => setView(view === "project" ? "avatars" : "project")}
+            className={view === "board" ? "is-active" : ""}
+            aria-current={view === "board" ? "page" : undefined}
+            onClick={showBoard}
           >
-            {view === "project" ? "Avatar lab" : "Back to project"}
+            Board
+          </button>
+          <button
+            type="button"
+            className={view === "chat" ? "is-active" : ""}
+            aria-current={view === "chat" ? "page" : undefined}
+            onClick={showChat}
+          >
+            Chat
+          </button>
+        </nav>
+        <div className="shell-titlebar__actions">
+          <button
+            type="button"
+            className="needs-button"
+            onClick={() => setNeedsOpen(true)}
+            aria-label={`${waitingTickets.length} need you`}
+          >
+            {waitingTickets.length > 0 && (
+              <span className="needs-button__dot" aria-hidden="true" />
+            )}
+            {waitingTickets.length} need you
+          </button>
+          <button
+            type="button"
+            className="command-button"
+            onClick={openCommandMenu}
+            aria-label="Open command menu"
+          >
+            <span>Search or jump</span>
+            <kbd>⌘K</kbd>
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => setSettingsOpen(true)}
+            aria-label="Open settings"
+          >
+            <span aria-hidden="true">⚙</span>
           </button>
         </div>
       </header>
       {view === "avatars" ? (
         <AvatarLab />
       ) : (
-        <main className="workspace">
+        <main className="shell-content">
           {error && !selectedTicket && (
             <div className="notice notice--error" role="alert">
               <p>{error}</p>
@@ -425,25 +540,14 @@ export function App() {
             </section>
           )}
           {snapshot && !project && (
-            <section className="welcome">
-              <div className="welcome__intro">
-                <p className="eyebrow">Your next project starts here</p>
-                <h1>
-                  Good work takes
-                  <br />a small team.
-                </h1>
-                <p>
-                  Give your project a home. Your engineer, tech lead, and QA
-                  teammate will help move each ticket from an idea to done.
-                </p>
-                <div className="welcome__footnote">
-                  <span className="simulation-badge">Simulation</span>
-                  <span>Try the delivery workflow with a simulated run.</span>
-                </div>
-              </div>
+            <section className="setup-view" aria-labelledby="setup-title">
               <form className="project-form" onSubmit={createProject}>
-                <p className="eyebrow">01 / Set up your workspace</p>
-                <h2>Make room for the work.</h2>
+                <p className="eyebrow">Local workspace</p>
+                <h1 id="setup-title">Set up your board</h1>
+                <p className="setup-view__copy">
+                  Name the project and optionally connect a local Git
+                  repository. Nothing leaves this computer.
+                </p>
                 <label htmlFor="project-name">Project name</label>
                 <input
                   id="project-name"
@@ -474,94 +578,23 @@ export function App() {
                   disabled={pending.has("project") || !projectName.trim()}
                 >
                   {pending.has("project")
-                    ? "Creating project…"
+                    ? "Creating project..."
                     : "Create project"}
-                  <span aria-hidden="true">↗</span>
                 </button>
               </form>
             </section>
           )}
           {snapshot && project && (
             <>
-              <section className="project-heading">
-                <div>
-                  <p className="eyebrow">Your workspace</p>
-                  <h1>{project.name}</h1>
-                  <p>
-                    {project.repositoryPath ??
-                      "A small team, ready to move your next idea forward."}
-                  </p>
-                </div>
-                <div className="project-heading__summary">
-                  <span className="simulation-badge">Simulation</span>
+              {view === "board" && (
+                <header className="board-page__header">
                   <div>
-                    <strong>
-                      {completedCount}
-                      <span> / {snapshot.tickets.length}</span>
-                    </strong>
-                    <span>tickets complete</span>
-                  </div>
-                </div>
-              </section>
-              <form className="repository-form" onSubmit={saveRepository}>
-                <div className="repository-form__field">
-                  <label htmlFor="project-repository-path">
-                    Repository path
-                  </label>
-                  <input
-                    id="project-repository-path"
-                    value={repositoryDraft ?? project.repositoryPath ?? ""}
-                    onChange={(event) => setRepositoryDraft(event.target.value)}
-                    placeholder="/Users/you/projects/your-project"
-                    required
-                    disabled={repositoryLocked}
-                    aria-describedby="repository-hint"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  className="button button--quiet"
-                  disabled={
-                    repositoryLocked ||
-                    !(repositoryDraft ?? project.repositoryPath ?? "").trim() ||
-                    (repositoryDraft ?? project.repositoryPath ?? "").trim() ===
-                      project.repositoryPath
-                  }
-                >
-                  {pending.has("repository")
-                    ? "Saving repository…"
-                    : "Save repository"}
-                </button>
-                <p id="repository-hint" className="repository-form__hint">
-                  {hasWorkspaces
-                    ? "The repository stays fixed once a ticket has a workspace."
-                    : "Connect a local Git repository to prepare a separate workspace for each ticket."}
-                </p>
-              </form>
-              <section className="crew" aria-label="Project team">
-                <div className="section-kicker">
-                  <h2>The team</h2>
-                  <span>
-                    {activeCount
-                      ? `${activeCount} ${activeCount === 1 ? "ticket" : "tickets"} in progress`
-                      : "Ready when you are"}
-                  </span>
-                </div>
-                <div className="crew-grid">
-                  {project.agents.map((agent) => (
-                    <TeamMember
-                      key={agent.id}
-                      agent={agent}
-                      tickets={snapshot.tickets}
-                    />
-                  ))}
-                </div>
-              </section>
-              <section className="delivery" aria-labelledby="delivery-title">
-                <div className="delivery-heading">
-                  <div>
-                    <p className="eyebrow">One step at a time</p>
-                    <h2 id="delivery-title">The work ahead</h2>
+                    <p className="eyebrow">Local delivery board</p>
+                    <h1>{project.name}</h1>
+                    <p>
+                      {project.repositoryPath ??
+                        "Simulation workspace · no repository connected"}
+                    </p>
                   </div>
                   <button
                     type="button"
@@ -573,197 +606,462 @@ export function App() {
                     {ticketFormOpen ? "Close ticket form" : "Add ticket"}
                     <span aria-hidden="true">{ticketFormOpen ? "−" : "+"}</span>
                   </button>
-                </div>
-                <p className="simulation-note">
-                  {project.repositoryPath
-                    ? "Codex makes local code changes in an isolated workspace and does not push. Simulation runs preview the workflow without code changes."
-                    : "Simulation runs preview implementation, review, and QA without code changes. Connect a repository to run Codex."}
-                </p>
-                {ticketFormOpen && (
-                  <form
-                    id="ticket-form"
-                    className="ticket-form"
-                    onSubmit={createTicket}
-                  >
-                    <div>
-                      <label htmlFor="ticket-title">Ticket title</label>
-                      <input
-                        id="ticket-title"
-                        value={ticketTitle}
-                        onChange={(event) => setTicketTitle(event.target.value)}
-                        placeholder="What should the team work on?"
-                        required
-                        maxLength={200}
-                        // biome-ignore lint/a11y/noAutofocus: the form opens in response to the user asking to add a ticket.
-                        autoFocus
-                        disabled={pending.has("ticket")}
+                </header>
+              )}
+              {view === "chat" ? (
+                <section
+                  className="chat-placeholder"
+                  aria-labelledby="chat-title"
+                >
+                  <div className="chat-placeholder__avatars" aria-hidden="true">
+                    {project.agents.map((agent) => (
+                      <AgentAvatar
+                        key={agent.id}
+                        agentId={agent.id}
+                        name={agent.displayName}
+                        avatarSeed={agent.avatarSeed}
+                        status="idle"
+                        size={38}
+                        decorative
                       />
-                    </div>
-                    <div>
-                      <label htmlFor="ticket-description">Description</label>
-                      <textarea
-                        id="ticket-description"
-                        value={ticketDescription}
-                        onChange={(event) =>
-                          setTicketDescription(event.target.value)
-                        }
-                        placeholder="Describe the outcome and how you'll know it's done."
-                        rows={3}
-                        disabled={pending.has("ticket")}
-                      />
-                    </div>
-                    <button
-                      type="submit"
-                      className="button button--primary"
-                      disabled={pending.has("ticket") || !ticketTitle.trim()}
-                    >
-                      {pending.has("ticket")
-                        ? "Creating ticket…"
-                        : "Create ticket"}
-                    </button>
-                  </form>
-                )}
-                <section className="delivery-board" aria-label="Ticket board">
-                  {stages.map((stage) => {
-                    const tickets = snapshot.tickets.filter(
-                      (ticket) => ticket.stage === stage.id,
-                    );
-                    return (
-                      <section
-                        className={`board-column board-column--${stage.id}`}
-                        key={stage.id}
-                        aria-label={stage.label}
-                      >
-                        <div className="board-column__heading">
-                          <h3>
-                            <span aria-hidden="true" />
-                            {stage.label}
-                          </h3>
-                          <span>{tickets.length}</span>
-                        </div>
-                        <div className="board-column__tickets">
-                          {tickets.length === 0 && (
-                            <div className="column-empty">
-                              {stage.id === "todo"
-                                ? "Your next idea goes here."
-                                : "Nothing here yet."}
-                            </div>
-                          )}
-                          {tickets.map((ticket) => {
-                            const agent = project.agents.find(
-                              (member) => member.id === ticket.assignedAgentId,
-                            );
-                            return (
-                              <article
-                                className="work-ticket"
-                                key={ticket.id}
-                                data-ticket-id={ticket.id}
-                                data-execution={ticket.execution}
-                              >
-                                <div className="work-ticket__meta">
-                                  <span
-                                    className={`execution-label execution-label--${ticket.execution}`}
-                                  >
-                                    {executionLabels[ticket.execution]}
-                                  </span>
-                                  <span
-                                    className={`work-ticket__mode work-ticket__mode--${ticket.mode}`}
-                                  >
-                                    {ticket.mode === "codex" ? "CODEX" : "SIM"}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  className="work-ticket__title"
-                                  onClick={() => setSelectedTicketId(ticket.id)}
-                                  aria-label={`View details: ${ticket.title}`}
-                                >
-                                  {ticket.title}
-                                </button>
-                                {ticket.description && (
-                                  <p className="work-ticket__description">
-                                    {ticket.description}
-                                  </p>
-                                )}
-                                <div className="work-ticket__assignee">
-                                  {agent ? (
-                                    <>
-                                      <AgentAvatar
-                                        agentId={agent.id}
-                                        name={agent.displayName}
-                                        avatarSeed={agent.avatarSeed}
-                                        status={avatarStatus(ticket)}
-                                        size={26}
-                                        decorative
-                                      />
-                                      <span>{agent.displayName}</span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <span
-                                        className="unassigned-mark"
-                                        aria-hidden="true"
-                                      >
-                                        ○
-                                      </span>
-                                      <span>Unassigned</span>
-                                    </>
-                                  )}
-                                </div>
-                                <div className="work-ticket__actions">
-                                  {runControls(ticket)}
-                                </div>
-                              </article>
-                            );
-                          })}
-                        </div>
-                      </section>
-                    );
-                  })}
-                </section>
-              </section>
-              <section className="activity" aria-labelledby="activity-title">
-                <div className="section-kicker">
-                  <h2 id="activity-title">Recent activity</h2>
-                  <span>Recorded in this workspace</span>
-                </div>
-                {snapshot.activity.length ? (
-                  <ol className="activity-list">
-                    {snapshot.activity
-                      .slice()
-                      .reverse()
-                      .slice(0, 12)
-                      .map((entry) => (
-                        <li key={entry.id}>
-                          <span
-                            className="activity-list__dot"
-                            aria-hidden="true"
-                          />
-                          <p>{entry.message}</p>
-                          <time dateTime={entry.createdAt}>
-                            {new Date(entry.createdAt).toLocaleTimeString([], {
-                              hour: "numeric",
-                              minute: "2-digit",
-                            })}
-                          </time>
-                        </li>
-                      ))}
-                  </ol>
-                ) : (
-                  <p className="activity-empty">
-                    The story starts with your first ticket.
+                    ))}
+                  </div>
+                  <p className="eyebrow">
+                    {selectedChatAgent ? "Direct message" : "#team"}
                   </p>
-                )}
-              </section>
+                  <h2 id="chat-title">
+                    {selectedChatAgent?.displayName ?? "Team chat"}
+                  </h2>
+                  <p>
+                    {selectedChatAgent
+                      ? `Direct messages with ${selectedChatAgent.displayName} will appear here.`
+                      : "Channels, ticket threads, and agent updates will appear here."}
+                  </p>
+                  <button
+                    type="button"
+                    className="button button--quiet"
+                    onClick={() => setView("board")}
+                  >
+                    Return to board
+                  </button>
+                </section>
+              ) : (
+                <section className="delivery" aria-labelledby="delivery-title">
+                  <h2 id="delivery-title" className="visually-hidden">
+                    Ticket board
+                  </h2>
+                  <p className="simulation-note">
+                    {project.repositoryPath
+                      ? "Codex works in an isolated local workspace. Simulation previews the workflow without code changes."
+                      : "Simulation previews implementation, review, and QA. Connect a repository in Settings to run Codex."}
+                  </p>
+                  {ticketFormOpen && (
+                    <form
+                      id="ticket-form"
+                      className="ticket-form"
+                      onSubmit={createTicket}
+                    >
+                      <div>
+                        <label htmlFor="ticket-title">Ticket title</label>
+                        <input
+                          id="ticket-title"
+                          value={ticketTitle}
+                          onChange={(event) =>
+                            setTicketTitle(event.target.value)
+                          }
+                          placeholder="What should the team work on?"
+                          required
+                          maxLength={200}
+                          // biome-ignore lint/a11y/noAutofocus: the form opens in response to the user asking to add a ticket.
+                          autoFocus
+                          disabled={pending.has("ticket")}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="ticket-description">Description</label>
+                        <textarea
+                          id="ticket-description"
+                          value={ticketDescription}
+                          onChange={(event) =>
+                            setTicketDescription(event.target.value)
+                          }
+                          placeholder="Describe the outcome and how you'll know it's done."
+                          rows={3}
+                          disabled={pending.has("ticket")}
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        className="button button--primary"
+                        disabled={pending.has("ticket") || !ticketTitle.trim()}
+                      >
+                        {pending.has("ticket")
+                          ? "Creating ticket..."
+                          : "Create ticket"}
+                      </button>
+                    </form>
+                  )}
+                  <section className="delivery-board" aria-label="Ticket board">
+                    {stages.map((stage) => {
+                      const tickets = snapshot.tickets.filter(
+                        (ticket) => ticket.stage === stage.id,
+                      );
+                      return (
+                        <section
+                          className={`board-column board-column--${stage.id}`}
+                          key={stage.id}
+                          aria-label={stage.label}
+                        >
+                          <div className="board-column__heading">
+                            <h3>
+                              <span aria-hidden="true" />
+                              {stage.label}
+                            </h3>
+                            <span>{tickets.length}</span>
+                          </div>
+                          <div className="board-column__tickets">
+                            {tickets.length === 0 && (
+                              <div className="column-empty">
+                                {stage.id === "todo"
+                                  ? "Your next idea goes here."
+                                  : "Nothing here yet."}
+                              </div>
+                            )}
+                            {tickets.map((ticket) => {
+                              const agent = project.agents.find(
+                                (member) =>
+                                  member.id === ticket.assignedAgentId,
+                              );
+                              return (
+                                <article
+                                  className="work-ticket"
+                                  key={ticket.id}
+                                  data-ticket-id={ticket.id}
+                                  data-execution={ticket.execution}
+                                >
+                                  <div className="work-ticket__meta">
+                                    <span
+                                      className={`execution-label execution-label--${ticket.execution}`}
+                                    >
+                                      {executionLabels[ticket.execution]}
+                                    </span>
+                                    <span
+                                      className={`work-ticket__mode work-ticket__mode--${ticket.mode}`}
+                                    >
+                                      {ticket.mode === "codex"
+                                        ? "CODEX"
+                                        : "SIM"}
+                                    </span>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    className="work-ticket__title"
+                                    onClick={() =>
+                                      setSelectedTicketId(ticket.id)
+                                    }
+                                    aria-label={`View details: ${ticket.title}`}
+                                  >
+                                    {ticket.title}
+                                  </button>
+                                  {ticket.description && (
+                                    <p className="work-ticket__description">
+                                      {ticket.description}
+                                    </p>
+                                  )}
+                                  <div className="work-ticket__assignee">
+                                    {agent ? (
+                                      <>
+                                        <AgentAvatar
+                                          agentId={agent.id}
+                                          name={agent.displayName}
+                                          avatarSeed={agent.avatarSeed}
+                                          status={avatarStatus(ticket)}
+                                          size={26}
+                                          decorative
+                                        />
+                                        <span>{agent.displayName}</span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span
+                                          className="unassigned-mark"
+                                          aria-hidden="true"
+                                        >
+                                          ○
+                                        </span>
+                                        <span>Unassigned</span>
+                                      </>
+                                    )}
+                                  </div>
+                                  <div className="work-ticket__actions">
+                                    {runControls(ticket)}
+                                  </div>
+                                </article>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      );
+                    })}
+                  </section>
+                </section>
+              )}
             </>
           )}
-          <footer className="workspace-footer">
-            <span>Stave · Thoughtful work, together.</span>
-            <span>Saved locally</span>
-          </footer>
         </main>
       )}
-      {view === "project" && selectedTicket && (
+      <Modal
+        open={needsOpen}
+        className="shell-sheet needs-sheet"
+        labelledBy="needs-title"
+        onClose={() => setNeedsOpen(false)}
+      >
+        <div className="sheet-heading">
+          <div>
+            <p className="eyebrow">Attention queue</p>
+            <h2 id="needs-title">Needs you</h2>
+          </div>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => setNeedsOpen(false)}
+            aria-label="Close needs you"
+          >
+            ×
+          </button>
+        </div>
+        {waitingTickets.length ? (
+          <ul className="needs-list">
+            {waitingTickets.map((ticket) => (
+              <li key={ticket.id}>
+                <button type="button" onClick={() => showTicket(ticket.id)}>
+                  <span className="needs-button__dot" aria-hidden="true" />
+                  <span>
+                    <strong>{ticket.title}</strong>
+                    <small>Waiting for your input</small>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div className="sheet-empty">
+            <span className="sheet-empty__check" aria-hidden="true">
+              ✓
+            </span>
+            <p>No tickets need your input.</p>
+          </div>
+        )}
+      </Modal>
+      <Modal
+        open={settingsOpen}
+        className="shell-sheet settings-sheet"
+        labelledBy="settings-title"
+        onClose={() => setSettingsOpen(false)}
+      >
+        <div className="sheet-heading">
+          <div>
+            <p className="eyebrow">Workspace</p>
+            <h2 id="settings-title">Project settings</h2>
+          </div>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={() => setSettingsOpen(false)}
+            aria-label="Close settings"
+          >
+            ×
+          </button>
+        </div>
+        {project && (
+          <>
+            <label className="settings-field" htmlFor="settings-project-name">
+              <span>Project name</span>
+              <input id="settings-project-name" value={project.name} readOnly />
+            </label>
+            <form className="settings-form" onSubmit={saveRepository}>
+              <label
+                className="settings-field"
+                htmlFor="project-repository-path"
+              >
+                <span>Repository path</span>
+                <input
+                  id="project-repository-path"
+                  value={repositoryDraft ?? project.repositoryPath ?? ""}
+                  onChange={(event) => setRepositoryDraft(event.target.value)}
+                  placeholder="/Users/you/projects/your-project"
+                  required
+                  disabled={repositoryLocked}
+                  aria-describedby="repository-hint"
+                />
+              </label>
+              <p id="repository-hint" className="settings-hint">
+                {hasWorkspaces
+                  ? "The repository stays fixed once a ticket has a workspace."
+                  : "Connect a local Git repository to give each ticket an isolated workspace."}
+              </p>
+              <button
+                type="submit"
+                className="button button--primary"
+                disabled={
+                  repositoryLocked ||
+                  !(repositoryDraft ?? project.repositoryPath ?? "").trim() ||
+                  (repositoryDraft ?? project.repositoryPath ?? "").trim() ===
+                    project.repositoryPath
+                }
+              >
+                {pending.has("repository")
+                  ? "Saving repository..."
+                  : "Save repository"}
+              </button>
+            </form>
+          </>
+        )}
+        <div className="settings-tools">
+          <div>
+            <strong>Avatar lab</strong>
+            <span>Preview the procedural agent states.</span>
+          </div>
+          <button
+            type="button"
+            className="button button--quiet"
+            onClick={() => {
+              setSettingsOpen(false);
+              setView("avatars");
+            }}
+          >
+            Open lab
+          </button>
+        </div>
+      </Modal>
+      <Modal
+        open={commandOpen}
+        className="command-menu"
+        labelledBy="command-title"
+        onClose={closeCommandMenu}
+      >
+        <h2 id="command-title" className="visually-hidden">
+          Command menu
+        </h2>
+        <div className="command-search">
+          <span aria-hidden="true">⌕</span>
+          <input
+            value={commandQuery}
+            onChange={(event) => setCommandQuery(event.target.value)}
+            placeholder="Jump to a ticket, channel, or agent"
+            aria-label="Search commands"
+            // biome-ignore lint/a11y/noAutofocus: opening the command menu is an explicit request to search.
+            autoFocus
+          />
+          <kbd>esc</kbd>
+        </div>
+        <div className="command-results">
+          {(matchesCommand("Board") || matchesCommand("Team chat")) && (
+            <section aria-labelledby="command-navigation">
+              <h3 id="command-navigation">Navigation</h3>
+              {matchesCommand("Board") && (
+                <button type="button" onClick={showBoard}>
+                  <span>Board</span>
+                  <small>Workspace</small>
+                </button>
+              )}
+              {matchesCommand("Team chat") && (
+                <button type="button" onClick={showChat}>
+                  <span>#team</span>
+                  <small>Channel</small>
+                </button>
+              )}
+            </section>
+          )}
+          {project && matchesCommand("Create ticket") && (
+            <section aria-labelledby="command-actions">
+              <h3 id="command-actions">Commands</h3>
+              <button type="button" onClick={showTicketForm}>
+                <span>Create ticket</span>
+                <small>C</small>
+              </button>
+            </section>
+          )}
+          {snapshot?.tickets.some((ticket) =>
+            matchesCommand(`${ticket.title} ticket run cancel`),
+          ) && (
+            <section aria-labelledby="command-tickets">
+              <h3 id="command-tickets">Tickets</h3>
+              {snapshot.tickets
+                .filter((ticket) =>
+                  matchesCommand(`${ticket.title} ticket run cancel`),
+                )
+                .map((ticket) => (
+                  <div className="command-ticket" key={ticket.id}>
+                    <button type="button" onClick={() => showTicket(ticket.id)}>
+                      <span>{ticket.title}</span>
+                      <small>{executionLabels[ticket.execution]}</small>
+                    </button>
+                    {ticket.execution === "running" ? (
+                      <button
+                        type="button"
+                        className="command-ticket__action"
+                        disabled={pending.has(ticket.id)}
+                        onClick={() => {
+                          closeCommandMenu();
+                          void command(ticket.id, () =>
+                            window.stave.runs.cancel({ ticketId: ticket.id }),
+                          );
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    ) : ticket.stage !== "done" ? (
+                      <button
+                        type="button"
+                        className="command-ticket__action"
+                        disabled={
+                          pending.has(ticket.id) ||
+                          preparingTicketId !== null ||
+                          activeCount > 0
+                        }
+                        onClick={() => {
+                          const mode = project?.repositoryPath
+                            ? "codex"
+                            : "simulation";
+                          closeCommandMenu();
+                          void command(ticket.id, () =>
+                            window.stave.runs.start({
+                              ticketId: ticket.id,
+                              mode,
+                            }),
+                          );
+                        }}
+                      >
+                        Run
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+            </section>
+          )}
+          {project?.agents.some((agent) =>
+            matchesCommand(`${agent.displayName} agent`),
+          ) && (
+            <section aria-labelledby="command-agents">
+              <h3 id="command-agents">Agents</h3>
+              {project.agents
+                .filter((agent) => matchesCommand(`${agent.displayName} agent`))
+                .map((agent) => (
+                  <button
+                    type="button"
+                    key={agent.id}
+                    onClick={() => showAgent(agent.id)}
+                  >
+                    <span>{agent.displayName}</span>
+                    <small>{roleLabels[agent.role]} · Direct message</small>
+                  </button>
+                ))}
+            </section>
+          )}
+        </div>
+      </Modal>
+      {view === "board" && selectedTicket && (
         <dialog
           ref={ticketDialogRef}
           className="ticket-detail"
