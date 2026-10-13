@@ -28,6 +28,7 @@ export interface WorkspaceSnapshot {
   readonly activity: readonly ActivityEntry[];
   readonly runs: readonly RunSnapshot[];
   readonly chatMessages: readonly ChatMessageSnapshot[];
+  readonly decisions: readonly DecisionSnapshot[];
 }
 
 interface ChatMessageSnapshot {
@@ -38,6 +39,31 @@ interface ChatMessageSnapshot {
   readonly ticketId: string | null;
   readonly agentId: string | null;
   readonly createdAt: string;
+}
+
+interface DecisionOptionSnapshot {
+  readonly label: string;
+  readonly description: string;
+}
+
+export interface DecisionSnapshot {
+  readonly id: string;
+  readonly ticketId: string;
+  readonly runId: string;
+  readonly questionId: string;
+  readonly header: string;
+  readonly question: string;
+  readonly options: readonly DecisionOptionSnapshot[];
+  readonly status: "pending" | "answered" | "interrupted";
+  readonly answer: string | null;
+  readonly createdAt: string;
+}
+
+export interface DecisionQuestion {
+  readonly id: string;
+  readonly header: string;
+  readonly question: string;
+  readonly options: readonly DecisionOptionSnapshot[];
 }
 
 export type WorkspaceEvent = {

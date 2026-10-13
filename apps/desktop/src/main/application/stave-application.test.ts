@@ -67,6 +67,50 @@ describe("StaveApplication", () => {
     ]);
   });
 
+  it("pauses for a structured decision and resumes the active stage", async () => {
+    const answers: string[] = [];
+    const { app, ticket } = setup(async ({ stage, requestDecision }) => {
+      if (stage === "implementation") {
+        answers.push(
+          await requestDecision({
+            id: "migration-choice",
+            header: "Data migration",
+            question: "How should existing records be converted?",
+            options: [
+              { label: "Preserve", description: "Keep all current values." },
+              { label: "Reset", description: "Use the new defaults." },
+            ],
+          }),
+        );
+      }
+      return { state: "succeeded", summary: `${stage} passed` };
+    });
+    app.startRun({ ticketId: ticket.id, mode: "simulation" });
+    await vi.waitFor(() =>
+      expect(app.getSnapshot().decisions[0]?.status).toBe("pending"),
+    );
+    const waiting = app.getSnapshot();
+    expect(parseWorkspaceSnapshot(waiting)).toEqual(waiting);
+    expect(waiting.tickets[0]?.execution).toBe("waiting_user");
+    expect(waiting.runs[0]?.state).toBe("waiting_user");
+
+    const resumed = app.answerDecision({
+      decisionId: waiting.decisions[0]?.id ?? "missing",
+      option: "Preserve",
+    });
+    expect(resumed.decisions[0]).toMatchObject({
+      status: "answered",
+      answer: "Preserve",
+    });
+    await vi.waitFor(() =>
+      expect(app.getSnapshot().tickets[0]?.stage).toBe("done"),
+    );
+    expect(answers).toEqual(["Preserve"]);
+    expect(app.getSnapshot().chatMessages.at(-1)?.text).toBe(
+      "You answered: Preserve",
+    );
+  });
+
   it("assigns sequential keys and retains ticket metadata", () => {
     const { app, ticket: firstTicket } = setup();
     const snapshot = app.createTicket({

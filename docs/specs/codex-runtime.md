@@ -24,7 +24,7 @@ Stave requests workspace-write permissions, disables command network access, exc
 
 Connected tools do not share the command sandbox's network restrictions. Stave therefore disables apps, plugins, remote plugin discovery, browser use, computer use, hooks, image generation, child agents, and automatic skill MCP installation for its child process and thread. It reads the effective configuration to discover inherited MCP server names and explicitly disables each server. Configuration values and credentials are not included in run events. Unsupported server names stop the run before thread creation.
 
-Every approval request receives a denial. Permission requests receive no added permissions; user-input requests receive no answers. Unknown interactive requests receive a protocol error. A request for the active run ends it with `waiting_user`; this API has no approval or resume operation. The prompt also restricts work to the local workspace and excludes pushes, pull requests, merges, deployments, and messages.
+Command and file approvals receive a denial. Permission requests receive no added permissions. Structured user-input requests with non-secret questions and at least two selectable options are shown to the user and answered on the same app-server turn. Secret questions and unsupported interactive requests receive no answer and end the run with `waiting_user`. The prompt also restricts work to the local workspace and excludes pushes, pull requests, merges, deployments, and messages.
 
 Workspace-write controls writes and command networking. It does not confine all file reads to the workspace. Codex remains responsible for enforcing its sandbox and managed configuration.
 

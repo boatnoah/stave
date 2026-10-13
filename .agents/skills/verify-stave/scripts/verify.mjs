@@ -361,6 +361,105 @@ async function driveWorkflow() {
   console.log(JSON.stringify(result, null, 2));
 }
 
+async function driveDecision() {
+  assert.ok(evidenceDirectory, "drive-decision requires an evidence directory");
+  const repository = process.env.VERIFY_REPOSITORY;
+  assert.ok(
+    repository,
+    "drive-decision requires a disposable VERIFY_REPOSITORY",
+  );
+  await mkdir(evidenceDirectory, { recursive: true });
+  const result = await withStaveClient(async (client, page) => {
+    const click = async (text) => {
+      const clicked = await evaluate(
+        client,
+        `(() => { const button = [...document.querySelectorAll('button')].find((node) => node.getClientRects().length > 0 && (node.textContent.trim().startsWith(${JSON.stringify(text)}) || node.getAttribute('aria-label') === ${JSON.stringify(text)})); if (!button || button.disabled) return false; button.scrollIntoView({block:'nearest',inline:'nearest'}); button.click(); return true; })()`,
+      );
+      assert.ok(clicked, `Enabled ${text} control not found`);
+    };
+    const fill = async (id, value) => {
+      await evaluate(
+        client,
+        `(() => { const input = document.getElementById(${JSON.stringify(id)}); if (!input) throw Error('Missing input'); const prototype = input.tagName === 'TEXTAREA' ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(prototype, 'value').set.call(input, ${JSON.stringify(value)}); input.dispatchEvent(new Event('input', {bubbles:true})); })()`,
+      );
+    };
+    const wait = async (expression) => {
+      for (let attempt = 0; attempt < 150; attempt++) {
+        if (await evaluate(client, expression)) return;
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
+      throw new Error(`Timed out: ${expression}`);
+    };
+
+    await wait("document.getElementById('project-name') !== null");
+    await fill("project-name", "Decision proof");
+    await fill("repository-path", repository);
+    await click("Create project");
+    await wait("document.querySelector('.board-page__header') !== null");
+    await click("Add ticket");
+    await wait("document.getElementById('ticket-title') !== null");
+    await fill("ticket-title", "Preserve the current data format");
+    await fill("ticket-description", "Ask before changing persisted values.");
+    await click("Create ticket");
+    await click("Expand To do");
+    await wait("document.querySelector('.work-ticket') !== null");
+    await click("Run Codex");
+    await wait(
+      "document.querySelector('.work-ticket[data-execution=waiting_user]') !== null",
+    );
+    await click("Chat");
+    await click("STV-1");
+    await wait("document.querySelector('.chat-decision--pending') !== null");
+    const question = await evaluate(
+      client,
+      `({ question: document.querySelector('.chat-decision h2')?.textContent?.trim(), options: [...document.querySelectorAll('.chat-decision__options button strong')].map((node) => node.textContent.trim()) })`,
+    );
+    assert.equal(
+      question.question,
+      "How should existing records be converted?",
+    );
+    assert.deepEqual(question.options, [
+      "Preserve existing data",
+      "Use the new defaults",
+    ]);
+    await captureScreenshot(
+      client,
+      `${evidenceDirectory}/decision-prompt.png`,
+      false,
+    );
+    await click("Preserve existing data");
+    await wait("document.querySelector('.chat-decision--answered') !== null");
+    await wait(
+      "document.querySelector('.chat-thread-summary__heading')?.textContent.includes('Done')",
+    );
+    const resumed = await evaluate(
+      client,
+      `({ status: document.querySelector('.chat-thread-summary__heading')?.textContent?.trim(), history: document.querySelector('.chat-messages')?.textContent ?? '' })`,
+    );
+    assert.ok(resumed.status.includes("Done"));
+    assert.ok(resumed.history.includes("You answered: Preserve existing data"));
+    assert.ok(resumed.history.includes("Completed fixture."));
+    await captureScreenshot(
+      client,
+      `${evidenceDirectory}/decision-resumed.png`,
+      false,
+    );
+    return {
+      passed: true,
+      feature: "structured-decision-resumes-codex-turn",
+      pageUrl: page.url,
+      question,
+      chosen: "Preserve existing data",
+      ticketStatus: resumed.status,
+    };
+  });
+  await writeFile(
+    `${evidenceDirectory}/result.json`,
+    `${JSON.stringify(result, null, 2)}\n`,
+  );
+  console.log(JSON.stringify(result, null, 2));
+}
+
 async function driveGit() {
   assert.ok(evidenceDirectory);
   assert.ok(
@@ -483,6 +582,7 @@ async function verifyRestored() {
 if (command === "drive-git") await driveGit();
 else if (command === "verify-restored") await verifyRestored();
 else if (command === "drive-workflow") await driveWorkflow();
+else if (command === "drive-decision") await driveDecision();
 else if (command === "doctor") await doctor();
 else if (command === "drive-state-preview") await driveStatePreview();
 else {

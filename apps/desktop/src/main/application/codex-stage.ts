@@ -17,6 +17,7 @@ export function codexPrompt({ ticket, stage, agent }: StageInput): string {
     `Ticket: ${ticket.title}`,
     ticket.description ? `\n${ticket.description}` : "",
     "",
+    "If a choice from the user is needed to continue, use structured user input with at least two clear options and one-line tradeoffs. Continue after the user chooses.",
     "Leave changes uncommitted. Finish with a short summary of what changed and which checks ran.",
   ].join("\n");
 }
@@ -34,6 +35,14 @@ export function createCodexStageRunner(
       signal: input.signal,
       onEvent: (event) => {
         if (event.kind === "output") input.onOutput(event.text);
+      },
+      onUserInput: async (request) => {
+        const answers: Record<string, { answers: readonly string[] }> = {};
+        for (const question of request.questions) {
+          const answer = await input.requestDecision(question);
+          answers[question.id] = { answers: [answer] };
+        }
+        return answers;
       },
     });
     return { state: result.kind, summary: result.summary };

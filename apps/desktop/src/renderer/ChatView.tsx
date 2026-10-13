@@ -37,6 +37,7 @@ export function ChatView({
   onSelectTicket,
   onSelectAgent,
   onSendMessage,
+  onAnswerDecision,
 }: {
   readonly snapshot: WorkspaceSnapshot;
   readonly agents: readonly AgentSnapshot[];
@@ -47,6 +48,10 @@ export function ChatView({
   readonly onSelectTicket: (ticketId: string) => void;
   readonly onSelectAgent: (agentId: string) => void;
   readonly onSendMessage: (text: string) => Promise<void>;
+  readonly onAnswerDecision: (
+    decisionId: string,
+    option: string,
+  ) => Promise<void>;
 }) {
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
@@ -246,6 +251,16 @@ export function ChatView({
         </header>
 
         {ticket && <TicketThreadSummary ticket={ticket} agents={agents} />}
+        {ticket &&
+          snapshot.decisions
+            .filter((decision) => decision.ticketId === ticket.id)
+            .map((decision) => (
+              <DecisionCard
+                key={decision.id}
+                decision={decision}
+                onAnswer={(option) => onAnswerDecision(decision.id, option)}
+              />
+            ))}
 
         <ol className="chat-messages" aria-live="polite" ref={messagesRef}>
           {visibleMessages.map((message, index) => {
@@ -344,6 +359,52 @@ export function ChatView({
           </p>
         </form>
       </section>
+    </section>
+  );
+}
+
+function DecisionCard({
+  decision,
+  onAnswer,
+}: {
+  readonly decision: WorkspaceSnapshot["decisions"][number];
+  readonly onAnswer: (option: string) => Promise<void>;
+}) {
+  return (
+    <section
+      className={`chat-decision chat-decision--${decision.status}`}
+      aria-label={`${decision.header}: ${decision.status}`}
+    >
+      <p className="chat-decision__eyebrow">
+        <span aria-hidden="true" />
+        {decision.status === "pending"
+          ? "Waiting on you"
+          : decision.status === "answered"
+            ? "Decision answered"
+            : "Run interrupted"}
+      </p>
+      <h2>{decision.question}</h2>
+      <div className="chat-decision__options">
+        {decision.options.map((option) => (
+          <button
+            key={option.label}
+            type="button"
+            disabled={decision.status !== "pending"}
+            aria-pressed={decision.answer === option.label}
+            onClick={() => void onAnswer(option.label)}
+          >
+            <strong>{option.label}</strong>
+            <span>{option.description}</span>
+          </button>
+        ))}
+      </div>
+      <p className="chat-decision__note">
+        {decision.status === "pending"
+          ? "Choose an option to resume this run."
+          : decision.status === "answered"
+            ? `You chose ${decision.answer}. The run resumed.`
+            : "This run stopped before a choice was submitted. Restart it to continue."}
+      </p>
     </section>
   );
 }

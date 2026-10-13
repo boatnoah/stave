@@ -45,6 +45,11 @@ export interface SendChatMessageRequest {
   readonly agentId?: string;
 }
 
+export interface AnswerDecisionRequest {
+  readonly decisionId: string;
+  readonly option: string;
+}
+
 export interface StaveDesktopApi {
   readonly platform: NodeJS.Platform;
   readonly workspace: {
@@ -76,6 +81,11 @@ export interface StaveDesktopApi {
   readonly chat: {
     readonly send: (
       request: SendChatMessageRequest,
+    ) => Promise<WorkspaceSnapshot>;
+  };
+  readonly decisions: {
+    readonly answer: (
+      request: AnswerDecisionRequest,
     ) => Promise<WorkspaceSnapshot>;
   };
   readonly events: {

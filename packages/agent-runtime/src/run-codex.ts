@@ -16,6 +16,29 @@ export type CodexRunEvent =
   | { kind: "status"; message: string }
   | { kind: "thread"; threadId: string };
 
+export interface CodexUserInputOption {
+  readonly label: string;
+  readonly description: string;
+}
+
+export interface CodexUserInputQuestion {
+  readonly id: string;
+  readonly header: string;
+  readonly question: string;
+  readonly options: readonly CodexUserInputOption[];
+}
+
+export interface CodexUserInputRequest {
+  readonly threadId: string;
+  readonly turnId: string;
+  readonly itemId: string;
+  readonly questions: readonly CodexUserInputQuestion[];
+}
+
+export type CodexUserInputAnswers = Readonly<
+  Record<string, { readonly answers: readonly string[] }>
+>;
+
 type ResultDetails = { summary: string; output: string; threadId?: string };
 export type CodexRunResult = ResultDetails &
   (
@@ -31,6 +54,9 @@ export type CodexRunOptions = {
   prompt: string;
   signal?: AbortSignal;
   onEvent?: (event: CodexRunEvent) => void;
+  onUserInput?: (
+    request: CodexUserInputRequest,
+  ) => Promise<CodexUserInputAnswers>;
   executable?: string;
   timeouts?: { requestMs?: number; runMs?: number; shutdownMs?: number };
 };
@@ -42,9 +68,73 @@ type PendingRequest = {
   timer: ReturnType<typeof setTimeout>;
 };
 type Notification = Extract<ProtocolMessage, { kind: "notification" }>;
+
+function boundedText(value: unknown, label: string, maximum: number): string {
+  const text = string(value).trim();
+  if (!text || text.length > maximum)
+    throw new Error(`Codex ${label} must contain 1 to ${maximum} characters.`);
+  return text;
+}
+
+function parseUserInputRequest(
+  value: Record<string, unknown>,
+): CodexUserInputRequest {
+  if (
+    !Array.isArray(value.questions) ||
+    value.questions.length < 1 ||
+    value.questions.length > 8
+  )
+    throw new Error("Codex user input must contain 1 to 8 questions.");
+  const questions = value.questions.map((candidate) => {
+    const question = object(candidate);
+    if (question.isSecret === true)
+      throw new Error("Secret user input is not supported.");
+    if (
+      !Array.isArray(question.options) ||
+      question.options.length < 2 ||
+      question.options.length > 8
+    )
+      throw new Error("Codex question needs 2 to 8 selectable options.");
+    return {
+      id: identifier(question.id),
+      header: boundedText(question.header, "question header", 100),
+      question: boundedText(question.question, "question", 1200),
+      options: question.options.map((candidateOption) => {
+        const option = object(candidateOption);
+        return {
+          label: boundedText(option.label, "option label", 100),
+          description: boundedText(
+            option.description,
+            "option description",
+            500,
+          ),
+        };
+      }),
+    };
+  });
+  if (
+    new Set(questions.map((question) => question.id)).size !== questions.length
+  )
+    throw new Error("Codex user-input question ids must be unique.");
+  if (
+    questions.some(
+      (question) =>
+        new Set(question.options.map((option) => option.label)).size !==
+        question.options.length,
+    )
+  )
+    throw new Error("Codex user-input option labels must be unique.");
+  return {
+    threadId: identifier(value.threadId),
+    turnId: identifier(value.turnId),
+    itemId: identifier(value.itemId),
+    questions,
+  };
+}
 const MAX_LINE_BYTES = 1024 * 1024;
 const MAX_OUTPUT_BYTES = 2 * 1024 * 1024;
 const MAX_EARLY_EVENTS = 256;
+const MAX_EARLY_REQUESTS = 8;
 const DISABLED_FEATURES = [
   "apps",
   "plugins",
@@ -110,6 +200,7 @@ export async function runCodex(
   let finalAgentText = "";
   const streamedItems = new Map<string, string>();
   const earlyEvents: Notification[] = [];
+  const earlyRequests: Extract<ProtocolMessage, { kind: "request" }>[] = [];
   let finish: (outcome: Outcome) => void = () => {};
   const outcome = new Promise<Outcome>((resolveOutcome) => {
     finish = (result) => {
@@ -265,8 +356,47 @@ export async function runCodex(
 
   function serverRequest(
     message: Extract<ProtocolMessage, { kind: "request" }>,
-  ) {
+  ): void {
     const { method, id, params } = message;
+    if (
+      method === "item/tool/requestUserInput" &&
+      threadId !== undefined &&
+      turnId === undefined &&
+      params.threadId === threadId
+    ) {
+      if (earlyRequests.length >= MAX_EARLY_REQUESTS)
+        throw new Error(
+          "Codex sent too many requests before the turn response.",
+        );
+      earlyRequests.push(message);
+      return;
+    }
+    if (method === "item/tool/requestUserInput" && options.onUserInput) {
+      let request: CodexUserInputRequest;
+      try {
+        request = parseUserInputRequest(params);
+      } catch (error) {
+        declineUserInput(id, params, errorMessage(error));
+        return;
+      }
+      if (request.threadId !== threadId || request.turnId !== turnId) {
+        declineUserInput(
+          id,
+          params,
+          "The user-input request did not match the active turn.",
+        );
+        return;
+      }
+      void options
+        .onUserInput(request)
+        .then((answers) => {
+          if (!completed) send({ id, result: { answers } });
+        })
+        .catch((error: unknown) => {
+          if (!completed) declineUserInput(id, params, errorMessage(error));
+        });
+      return;
+    }
     switch (method) {
       case "item/commandExecution/requestApproval":
       case "item/fileChange/requestApproval":
@@ -276,8 +406,8 @@ export async function runCodex(
         send({ id, result: { permissions: {}, scope: "turn" } });
         break;
       case "item/tool/requestUserInput":
-        send({ id, result: { answers: {} } });
-        break;
+        declineUserInput(id, params, "Structured user input is unavailable.");
+        return;
       case "mcpServer/elicitation/request":
         send({ id, result: { action: "decline", content: null } });
         break;
@@ -294,10 +424,34 @@ export async function runCodex(
           },
         });
     }
+    if (completed) return;
     const summary = `Codex needs user action for ${method}. The request was declined.`;
     if (params.threadId === undefined)
       finish({ kind: "waiting_user", summary });
     else if (params.threadId === threadId && params.turnId === undefined) {
+      finish({ kind: "waiting_user", summary });
+    } else {
+      notification({
+        kind: "notification",
+        method: "stave/waitingUser",
+        params: {
+          threadId: params.threadId,
+          turnId: params.turnId,
+          message: summary,
+        },
+      });
+    }
+  }
+
+  function declineUserInput(
+    id: string | number,
+    params: Record<string, unknown>,
+    reason: string,
+  ) {
+    send({ id, result: { answers: {} } });
+    if (completed) return;
+    const summary = `Codex needs user action. ${reason}`;
+    if (params.threadId === undefined) {
       finish({ kind: "waiting_user", summary });
     } else {
       notification({
@@ -392,7 +546,7 @@ export async function runCodex(
     const initialized = object(
       await request("initialize", {
         clientInfo: { name: "stave", title: "Stave", version: "0.0.0" },
-        capabilities: { experimentalApi: false },
+        capabilities: { experimentalApi: true },
       }),
     );
     string(initialized.userAgent);
@@ -455,6 +609,11 @@ export async function runCodex(
       }),
     );
     turnId = parseTurn(startedTurn.turn).id;
+    for (const request of earlyRequests) {
+      if (completed) break;
+      serverRequest(request);
+    }
+    earlyRequests.length = 0;
     for (const event of earlyEvents) {
       if (completed) break;
       notification(event);
