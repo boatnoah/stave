@@ -15,6 +15,8 @@ import type {
 } from "../../shared/desktop-api";
 import type {
   AgentSnapshot,
+  DecisionQuestion,
+  DecisionSnapshot,
   ExecutionState,
   RunMode,
   RunSnapshot,
@@ -36,6 +38,7 @@ export interface StageInput {
   readonly agent: AgentSnapshot;
   readonly signal: AbortSignal;
   readonly onOutput: (text: string) => void;
+  readonly requestDecision: (question: DecisionQuestion) => Promise<string>;
 }
 export type StageRunner = (input: StageInput) => Promise<RunOutcome>;
 
@@ -82,6 +85,7 @@ export class StaveApplication {
     activity: [],
     runs: [],
     chatMessages: [],
+    decisions: [],
   };
   readonly #listeners = new Set<WorkspaceListener>();
   readonly #runner: StageRunner;
@@ -94,6 +98,12 @@ export class StaveApplication {
     ticketId: string;
     controller: AbortController;
     done: Promise<void>;
+  } | null = null;
+  #pendingDecision: {
+    readonly decision: DecisionSnapshot;
+    readonly resolve: (answer: string) => void;
+    readonly signal: AbortSignal;
+    readonly abort: () => void;
   } | null = null;
 
   constructor(
@@ -120,26 +130,36 @@ export class StaveApplication {
         });
       if (
         this.#snapshot.tickets.some(
-          (ticket) => ticket.execution === "running",
+          (ticket) =>
+            ticket.execution === "running" ||
+            ticket.execution === "waiting_user",
         ) ||
-        this.#snapshot.runs.some((run) => run.state === "running")
+        this.#snapshot.runs.some(
+          (run) => run.state === "running" || run.state === "waiting_user",
+        )
       ) {
         this.#change(
           {
             ...this.#snapshot,
             tickets: this.#snapshot.tickets.map((ticket) =>
-              ticket.execution === "running"
+              ticket.execution === "running" ||
+              ticket.execution === "waiting_user"
                 ? { ...ticket, execution: "interrupted" }
                 : ticket,
             ),
             runs: this.#snapshot.runs.map((run) =>
-              run.state === "running"
+              run.state === "running" || run.state === "waiting_user"
                 ? {
                     ...run,
                     state: "interrupted",
                     summary: "Application stopped before this run completed",
                   }
                 : run,
+            ),
+            decisions: this.#snapshot.decisions.map((decision) =>
+              decision.status === "pending"
+                ? { ...decision, status: "interrupted" }
+                : decision,
             ),
           },
           null,
@@ -426,6 +446,49 @@ export class StaveApplication {
     return this.getSnapshot();
   }
 
+  answerDecision(request: {
+    decisionId: string;
+    option: string;
+  }): WorkspaceSnapshot {
+    const pending = this.#pendingDecision;
+    if (!pending || pending.decision.id !== request.decisionId)
+      throw new Error("This decision is no longer active");
+    const answer = pending.decision.options.find(
+      (option) => option.label === request.option,
+    );
+    if (!answer) throw new Error("Select one of the available options");
+    const chatMessage = {
+      id: crypto.randomUUID(),
+      author: "user" as const,
+      text: `You answered: ${answer.label}`,
+      channel: "ticket" as const,
+      ticketId: pending.decision.ticketId,
+      agentId: null,
+      createdAt: new Date().toISOString(),
+    };
+    const snapshot = this.#change({
+      ...this.#snapshot,
+      tickets: this.#snapshot.tickets.map((ticket) =>
+        ticket.id === pending.decision.ticketId
+          ? { ...ticket, execution: "running" }
+          : ticket,
+      ),
+      runs: this.#snapshot.runs.map((run) =>
+        run.id === pending.decision.runId ? { ...run, state: "running" } : run,
+      ),
+      decisions: this.#snapshot.decisions.map((decision) =>
+        decision.id === pending.decision.id
+          ? { ...decision, status: "answered", answer: answer.label }
+          : decision,
+      ),
+      chatMessages: [...this.#snapshot.chatMessages, chatMessage].slice(-1000),
+    });
+    this.#pendingDecision = null;
+    pending.signal.removeEventListener("abort", pending.abort);
+    pending.resolve(answer.label);
+    return snapshot;
+  }
+
   async shutdown(): Promise<void> {
     if (this.#preparing) await this.#preparing.catch(() => {});
     const active = this.#active;
@@ -519,7 +582,15 @@ export class StaveApplication {
                 output: (this.#ticket(ticketId).output + text).slice(-100_000),
               });
           },
+          requestDecision: (question) =>
+            this.#requestDecision(
+              ticketId,
+              run.id,
+              question,
+              controller.signal,
+            ),
         });
+        this.#interruptPendingDecision(run.id);
         const state = controller.signal.aborted ? "canceled" : outcome.state;
         const workspace =
           mode === "codex"
@@ -551,6 +622,7 @@ export class StaveApplication {
         if (state !== "succeeded") return;
       }
     } catch (error) {
+      if (runId) this.#interruptPendingDecision(runId);
       const message = error instanceof Error ? error.message : "Run failed";
       this.#change(
         {
@@ -578,6 +650,80 @@ export class StaveApplication {
     const repositoryPath = this.#snapshot.project?.repositoryPath;
     if (!repositoryPath || !this.#workspaceProvider) return null;
     return this.#workspaceProvider({ repositoryPath, ticketId });
+  }
+
+  #requestDecision(
+    ticketId: string,
+    runId: string,
+    question: DecisionQuestion,
+    signal: AbortSignal,
+  ): Promise<string> {
+    if (signal.aborted) return Promise.resolve("");
+    if (this.#pendingDecision)
+      throw new Error("Another user decision is already waiting");
+    if (question.options.length < 2 || question.options.length > 8)
+      throw new Error("A decision needs between 2 and 8 options");
+    const decision: DecisionSnapshot = {
+      id: crypto.randomUUID(),
+      ticketId,
+      runId,
+      questionId: question.id,
+      header: question.header,
+      question: question.question,
+      options: question.options,
+      status: "pending",
+      answer: null,
+      createdAt: new Date().toISOString(),
+    };
+    return new Promise((resolve) => {
+      const abort = () => {
+        if (this.#pendingDecision?.decision.id !== decision.id) return;
+        this.#pendingDecision = null;
+        this.#change({
+          ...this.#snapshot,
+          decisions: this.#snapshot.decisions.map((candidate) =>
+            candidate.id === decision.id
+              ? { ...candidate, status: "interrupted" }
+              : candidate,
+          ),
+        });
+        resolve("");
+      };
+      this.#pendingDecision = { decision, resolve, signal, abort };
+      signal.addEventListener("abort", abort, { once: true });
+      this.#change(
+        {
+          ...this.#snapshot,
+          tickets: this.#snapshot.tickets.map((ticket) =>
+            ticket.id === ticketId
+              ? { ...ticket, execution: "waiting_user" }
+              : ticket,
+          ),
+          runs: this.#snapshot.runs.map((run) =>
+            run.id === runId ? { ...run, state: "waiting_user" } : run,
+          ),
+          decisions: [...this.#snapshot.decisions, decision],
+        },
+        ticketId,
+        `${question.header}: ${question.question}`,
+      );
+    });
+  }
+
+  #interruptPendingDecision(runId: string): void {
+    const pending = this.#pendingDecision;
+    if (!pending || pending.decision.runId !== runId) return;
+    this.#pendingDecision = null;
+    pending.signal.removeEventListener("abort", pending.abort);
+    this.#change({
+      ...this.#snapshot,
+      decisions: this.#snapshot.decisions.map((decision) =>
+        decision.id === pending.decision.id
+          ? { ...decision, status: "interrupted" }
+          : decision,
+      ),
+    });
+    pending.resolve("");
   }
 
   #ticket(id: string): TicketSnapshot {

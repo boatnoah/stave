@@ -51,6 +51,7 @@ const snapshot: WorkspaceSnapshot = {
     },
   ],
   chatMessages: [],
+  decisions: [],
 };
 
 describe("buildChatMessages", () => {

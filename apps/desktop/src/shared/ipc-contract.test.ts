@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  parseAnswerDecisionRequest,
   parseBoardSettingsRequest,
   parseCreateProjectRequest,
   parseCreateTicketRequest,
@@ -9,6 +10,17 @@ import {
 } from "./ipc-contract";
 
 describe("IPC contract validation", () => {
+  it("validates a decision answer request", () => {
+    expect(
+      parseAnswerDecisionRequest({ decisionId: "decision-1", option: "Keep" }),
+    ).toEqual({
+      decisionId: "decision-1",
+      option: "Keep",
+    });
+    expect(() =>
+      parseAnswerDecisionRequest({ decisionId: "decision-1", option: "" }),
+    ).toThrow("Decision option");
+  });
   it("validates chat channel context and message size", () => {
     expect(
       parseSendChatMessageRequest({ text: " hello ", channel: "team" }),
@@ -89,6 +101,7 @@ describe("IPC contract validation", () => {
       wipLimits: { implementation: 2, review: 1, qa: 2 },
       showNeedsLane: false,
     });
+    expect(snapshot.decisions).toEqual([]);
     expect(snapshot.tickets[0]).toMatchObject({
       key: "STV-1",
       type: "task",

@@ -11,6 +11,7 @@ import {
   ticketTypes,
 } from "@stave/domain";
 import type {
+  AnswerDecisionRequest,
   BoardSettingsRequest,
   CreateProjectRequest,
   CreateTicketRequest,
@@ -39,6 +40,7 @@ export const ipcChannels = {
   cancelRun: "stave:runs:cancel",
   workspaceEvent: "stave:events:workspace",
   sendChatMessage: "stave:chat:send-message",
+  answerDecision: "stave:decisions:answer",
 } as const;
 
 function requireRecord(value: unknown, label: string): Record<string, unknown> {
@@ -254,7 +256,10 @@ function records(value: unknown, label: string): Record<string, unknown>[] {
 }
 function parseWork(
   snapshot: Record<string, unknown>,
-): Pick<WorkspaceSnapshot, "tickets" | "activity" | "runs" | "chatMessages"> {
+): Pick<
+  WorkspaceSnapshot,
+  "tickets" | "activity" | "runs" | "chatMessages" | "decisions"
+> {
   return {
     tickets: records(snapshot.tickets, "Tickets").map((ticket, index) => {
       const workspace =
@@ -326,6 +331,54 @@ function parseWork(
         createdAt: requireString(message.createdAt, "Created at"),
       };
     }),
+    decisions: (snapshot.decisions === undefined
+      ? []
+      : records(snapshot.decisions, "Decisions")
+    ).map((decision) => {
+      const status = decision.status;
+      if (
+        status !== "pending" &&
+        status !== "answered" &&
+        status !== "interrupted"
+      )
+        throw new Error("Invalid decision status");
+      const options = records(decision.options, "Decision options").map(
+        (option) => ({
+          label: requireString(option.label, "Decision option label"),
+          description: requireText(
+            option.description,
+            "Decision option description",
+          ),
+        }),
+      );
+      if (options.length < 2 || options.length > 8)
+        throw new Error("A decision must have between 2 and 8 options");
+      return {
+        id: requireString(decision.id, "Decision id"),
+        ticketId: requireString(decision.ticketId, "Ticket id"),
+        runId: requireString(decision.runId, "Run id"),
+        questionId: requireString(decision.questionId, "Question id"),
+        header: requireString(decision.header, "Decision header"),
+        question: requireString(decision.question, "Decision question"),
+        options,
+        status,
+        answer:
+          decision.answer === null
+            ? null
+            : requireString(decision.answer, "Decision answer"),
+        createdAt: requireString(decision.createdAt, "Created at"),
+      };
+    }),
+  };
+}
+
+export function parseAnswerDecisionRequest(
+  value: unknown,
+): AnswerDecisionRequest {
+  const record = requireRecord(value, "Decision answer request");
+  return {
+    decisionId: requireString(record.decisionId, "Decision id"),
+    option: requireString(record.option, "Decision option"),
   };
 }
 

@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { StaveDesktopApi } from "./shared/desktop-api";
 import {
   ipcChannels,
+  parseAnswerDecisionRequest,
   parseSendChatMessageRequest,
   parseWorkspaceEvent,
   parseWorkspaceSnapshot,
@@ -58,6 +59,15 @@ const desktopApi: StaveDesktopApi = Object.freeze({
         await ipcRenderer.invoke(
           ipcChannels.sendChatMessage,
           parseSendChatMessageRequest(request),
+        ),
+      ),
+  }),
+  decisions: Object.freeze<StaveDesktopApi["decisions"]>({
+    answer: async (request) =>
+      parseWorkspaceSnapshot(
+        await ipcRenderer.invoke(
+          ipcChannels.answerDecision,
+          parseAnswerDecisionRequest(request),
         ),
       ),
   }),

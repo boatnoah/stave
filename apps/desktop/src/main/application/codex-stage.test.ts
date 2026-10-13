@@ -33,6 +33,7 @@ function input(overrides: Partial<StageInput> = {}): StageInput {
     },
     signal: new AbortController().signal,
     onOutput: () => {},
+    requestDecision: async () => "Continue",
     ...overrides,
   };
 }

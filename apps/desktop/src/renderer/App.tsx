@@ -748,6 +748,11 @@ export function App() {
                       }),
                     )
                   }
+                  onAnswerDecision={(decisionId, option) =>
+                    command(`decision-${decisionId}`, () =>
+                      window.stave.decisions.answer({ decisionId, option }),
+                    )
+                  }
                 />
               ) : (
                 <section className="delivery" aria-labelledby="delivery-title">

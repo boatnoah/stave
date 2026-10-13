@@ -77,7 +77,7 @@ describe("Codex app-server stdio runtime", () => {
         method: "initialize",
         params: {
           clientInfo: { name: "stave", title: "Stave", version: "0.0.0" },
-          capabilities: { experimentalApi: false },
+          capabilities: { experimentalApi: true },
         },
       }),
       { method: "initialized", params: {} },
@@ -219,6 +219,44 @@ describe("Codex app-server stdio runtime", () => {
   ])("maps %s to %s", async (mode, kind, summary) => {
     const { cwd, options } = await fixture(mode);
     expect(await runCodex(options)).toMatchObject({ kind, summary });
+    await expectStopped(cwd);
+  });
+
+  it("waits for structured user input and resumes the same Codex turn", async () => {
+    const { cwd, options } = await fixture("decision");
+    const result = await runCodex({
+      ...options,
+      prompt: "implementation stage",
+      onUserInput: async (request) => {
+        expect(request).toMatchObject({
+          threadId: "thread-1",
+          turnId: "turn-1",
+          questions: [
+            {
+              id: "migration-choice",
+              header: "Data migration",
+              options: [
+                { label: "Preserve existing data" },
+                { label: "Use the new defaults" },
+              ],
+            },
+          ],
+        });
+        return {
+          "migration-choice": { answers: ["Preserve existing data"] },
+        };
+      },
+    });
+
+    expect(result).toMatchObject({ kind: "succeeded", threadId: "thread-1" });
+    expect(await messages(cwd)).toContainEqual({
+      id: "server-request",
+      result: {
+        answers: {
+          "migration-choice": { answers: ["Preserve existing data"] },
+        },
+      },
+    });
     await expectStopped(cwd);
   });
 

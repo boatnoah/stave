@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 import { appendFileSync, readFileSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline";
 
-const mode = readFileSync("scenario", "utf8");
+const mode = readFileSync("scenario", "utf8").trim();
 writeFileSync("pid", String(process.pid));
 writeFileSync("arguments.json", JSON.stringify(process.argv.slice(2)));
 const emit = (value) => process.stdout.write(`${JSON.stringify(value)}\n`);
@@ -23,6 +23,10 @@ if (mode === "stubborn") {
 input.on("line", (line) => {
   const message = JSON.parse(line);
   appendFileSync("received.jsonl", `${line}\n`);
+  if (message.id === "server-request" && mode === "decision") {
+    success();
+    return;
+  }
   if (message.method === "initialize") {
     if (mode === "exit") process.exit(7);
     if (mode === "request-timeout") return;
@@ -85,6 +89,36 @@ input.on("line", (line) => {
     if (mode === "early-events") success();
     if (mode === "early-user") ask("item/tool/requestUserInput");
     response(message.id, { turn: turn("inProgress") });
+    if (mode === "decision") {
+      const prompt = message.params.input
+        .map((item) => (item.type === "text" ? item.text : ""))
+        .join("\n");
+      if (prompt.includes("implementation stage")) {
+        ask("item/tool/requestUserInput", {
+          isBlocking: true,
+          questions: [
+            {
+              id: "migration-choice",
+              header: "Data migration",
+              question: "How should existing records be converted?",
+              options: [
+                {
+                  label: "Preserve existing data",
+                  description: "Keep all current values.",
+                },
+                {
+                  label: "Use the new defaults",
+                  description: "Reset values to the new defaults.",
+                },
+              ],
+            },
+          ],
+        });
+      } else {
+        success();
+      }
+      return;
+    }
     if (
       [
         "early-events",
@@ -201,11 +235,11 @@ input.on("close", () => {
   if (mode !== "stubborn") process.exit(0);
 });
 
-function ask(method) {
+function ask(method, params = {}) {
   emit({
     id: "server-request",
     method,
-    params: { ...scope, itemId: "item-1" },
+    params: { ...scope, itemId: "item-1", ...params },
   });
 }
 function success() {

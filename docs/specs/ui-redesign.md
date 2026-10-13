@@ -138,7 +138,7 @@ Attachments use neutral surfaces and a hairline border:
 - A handoff shows the from and to avatars, the handoff destination, and the diff size.
 - A test result shows the command, duration, and pass or fail lines in mono.
 
-A decision card contains an amber dot and a waiting-on-user label, a bold question, at least two outlined options with one-line tradeoffs, and a note that the user can reply. Answering resumes the run.
+A decision card contains an amber dot and a waiting-on-user label, a bold question, at least two outlined options with one-line tradeoffs, and a note that the user can reply. Answering sends the selected option to the active Codex app-server request and resumes that same turn. Secret or free-text questions remain in `waiting_user` for the user to handle outside the run.
 
 A system line is one quiet line with a stage-colored dot.
 
