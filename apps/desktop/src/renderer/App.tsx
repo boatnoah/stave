@@ -18,6 +18,7 @@ import {
   useState,
 } from "react";
 
+import staveMarkUrl from "../../assets/stave-mark.svg";
 import type {
   DesktopAgentRole,
   TicketSnapshot,
@@ -560,24 +561,28 @@ export function App() {
   return (
     <>
       <header className="shell-titlebar">
-        <nav className="shell-tabs" aria-label="Primary">
-          <button
-            type="button"
-            className={view === "board" ? "is-active" : ""}
-            aria-current={view === "board" ? "page" : undefined}
-            onClick={showBoard}
-          >
-            Board
-          </button>
-          <button
-            type="button"
-            className={view === "chat" ? "is-active" : ""}
-            aria-current={view === "chat" ? "page" : undefined}
-            onClick={showChat}
-          >
-            Chat
-          </button>
-        </nav>
+        <div className="shell-titlebar__identity">
+          <img className="shell-brand__mark" src={staveMarkUrl} alt="" />
+          <span className="shell-brand__name">Stave</span>
+          <nav className="shell-tabs" aria-label="Primary">
+            <button
+              type="button"
+              className={view === "board" ? "is-active" : ""}
+              aria-current={view === "board" ? "page" : undefined}
+              onClick={showBoard}
+            >
+              Board
+            </button>
+            <button
+              type="button"
+              className={view === "chat" ? "is-active" : ""}
+              aria-current={view === "chat" ? "page" : undefined}
+              onClick={showChat}
+            >
+              Chat
+            </button>
+          </nav>
+        </div>
         <div className="shell-titlebar__actions">
           <button
             type="button"
