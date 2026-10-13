@@ -1,4 +1,5 @@
 import { AgentAvatar, type AvatarStatus } from "@stave/avatar";
+import type { BoardWorkStage, ProjectBoardSettings } from "@stave/domain";
 import {
   type FormEvent,
   type ReactNode,
@@ -48,8 +49,8 @@ const stages: readonly {
   readonly id: TicketSnapshot["stage"];
   readonly label: string;
 }[] = [
-  { id: "todo", label: "Todo" },
-  { id: "implementation", label: "Implementation" },
+  { id: "todo", label: "To do" },
+  { id: "implementation", label: "Building" },
   { id: "review", label: "Review" },
   { id: "qa", label: "QA" },
   { id: "done", label: "Done" },
@@ -158,18 +159,14 @@ export function App() {
     null,
   );
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [boardSettingsDraft, setBoardSettingsDraft] =
+    useState<ProjectBoardSettings | null>(null);
+  const [collapsedStages, setCollapsedStages] = useState<
+    ReadonlySet<"todo" | "done">
+  >(() => new Set(["todo", "done"]));
   const [needsOpen, setNeedsOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
-  const ticketDialogRef = useRef<HTMLDialogElement>(null);
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reopen the dialog whenever the selected ticket changes.
-  useEffect(() => {
-    const dialog = ticketDialogRef.current;
-    if (!dialog || view !== "board") return;
-    dialog.showModal();
-    return () => dialog.close();
-  }, [selectedTicketId, view]);
 
   useEffect(() => {
     const handleCommandShortcut = (event: KeyboardEvent) => {
@@ -266,6 +263,36 @@ export function App() {
         window.stave.projects.setRepository({ repositoryPath: path.trim() }),
       () => setRepositoryDraft(null),
     );
+  }
+
+  function openSettings() {
+    if (project) setBoardSettingsDraft(project.boardSettings);
+    setSettingsOpen(true);
+  }
+
+  function saveBoardSettings(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!boardSettingsDraft) return;
+    void command("board-settings", () =>
+      window.stave.projects.setBoardSettings({ settings: boardSettingsDraft }),
+    );
+  }
+
+  function updateWipLimit(stage: BoardWorkStage, limit: number) {
+    setBoardSettingsDraft((current) =>
+      current
+        ? { ...current, wipLimits: { ...current.wipLimits, [stage]: limit } }
+        : current,
+    );
+  }
+
+  function toggleRail(stage: "todo" | "done") {
+    setCollapsedStages((current) => {
+      const next = new Set(current);
+      if (next.has(stage)) next.delete(stage);
+      else next.add(stage);
+      return next;
+    });
   }
 
   async function prepareWorkspace(ticket: TicketSnapshot) {
@@ -492,7 +519,7 @@ export function App() {
           <button
             type="button"
             className="icon-button"
-            onClick={() => setSettingsOpen(true)}
+            onClick={openSettings}
             aria-label="Open settings"
           >
             <span aria-hidden="true">⚙</span>
@@ -502,7 +529,9 @@ export function App() {
       {view === "avatars" ? (
         <AvatarLab />
       ) : (
-        <main className="shell-content">
+        <main
+          className={`shell-content${selectedTicket && view === "board" ? " shell-content--inspector-open" : ""}`}
+        >
           {error && !selectedTicket && (
             <div className="notice notice--error" role="alert">
               <p>{error}</p>
@@ -701,105 +730,211 @@ export function App() {
                       </button>
                     </form>
                   )}
-                  <section className="delivery-board" aria-label="Ticket board">
+                  {project.boardSettings.showNeedsLane &&
+                    waitingTickets.length > 0 && (
+                      <section className="needs-lane" aria-label="Needs you">
+                        <div className="needs-lane__heading">
+                          <span
+                            className="needs-button__dot"
+                            aria-hidden="true"
+                          />
+                          <h3>Needs you</h3>
+                          <span>{waitingTickets.length}</span>
+                        </div>
+                        <div className="needs-lane__tickets">
+                          {waitingTickets.map((ticket) => (
+                            <button
+                              type="button"
+                              key={ticket.id}
+                              onClick={() => setSelectedTicketId(ticket.id)}
+                            >
+                              <strong>{ticket.title}</strong>
+                              <small>Waiting for your input</small>
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+                    )}
+                  <section
+                    className={`delivery-board${collapsedStages.has("todo") ? "" : collapsedStages.has("done") ? " delivery-board--todo-open" : " delivery-board--both-open"}${collapsedStages.has("done") ? "" : collapsedStages.has("todo") ? " delivery-board--done-open" : ""}`}
+                    aria-label="Ticket board"
+                  >
                     {stages.map((stage) => {
                       const tickets = snapshot.tickets.filter(
                         (ticket) => ticket.stage === stage.id,
                       );
+                      const railStage =
+                        stage.id === "todo" || stage.id === "done"
+                          ? stage.id
+                          : null;
+                      const isRail = railStage !== null;
+                      const isCollapsed = railStage
+                        ? collapsedStages.has(railStage)
+                        : false;
+                      const limit =
+                        stage.id === "todo" || stage.id === "done"
+                          ? null
+                          : project.boardSettings.wipLimits[stage.id];
+                      const atLimit = limit !== null && tickets.length >= limit;
                       return (
                         <section
-                          className={`board-column board-column--${stage.id}`}
+                          className={`board-column board-column--${stage.id}${isCollapsed ? " board-column--collapsed" : ""}`}
                           key={stage.id}
                           aria-label={stage.label}
+                          id={`board-column-${stage.id}`}
                         >
-                          <div className="board-column__heading">
-                            <h3>
-                              <span aria-hidden="true" />
-                              {stage.label}
-                            </h3>
-                            <span>{tickets.length}</span>
-                          </div>
-                          <div className="board-column__tickets">
-                            {tickets.length === 0 && (
-                              <div className="column-empty">
-                                {stage.id === "todo"
-                                  ? "Your next idea goes here."
-                                  : "Nothing here yet."}
-                              </div>
-                            )}
-                            {tickets.map((ticket) => {
-                              const agent = project.agents.find(
-                                (member) =>
-                                  member.id === ticket.assignedAgentId,
-                              );
-                              return (
-                                <article
-                                  className="work-ticket"
-                                  key={ticket.id}
-                                  data-ticket-id={ticket.id}
-                                  data-execution={ticket.execution}
-                                >
-                                  <div className="work-ticket__meta">
-                                    <span
-                                      className={`execution-label execution-label--${ticket.execution}`}
-                                    >
-                                      {executionLabels[ticket.execution]}
-                                    </span>
-                                    <span
-                                      className={`work-ticket__mode work-ticket__mode--${ticket.mode}`}
-                                    >
-                                      {ticket.mode === "codex"
-                                        ? "CODEX"
-                                        : "SIM"}
-                                    </span>
-                                  </div>
+                          {isCollapsed ? (
+                            <button
+                              type="button"
+                              className="board-rail"
+                              aria-label={`Expand ${stage.label}`}
+                              aria-expanded="false"
+                              aria-controls={`board-column-${stage.id}`}
+                              onClick={() => {
+                                if (railStage) toggleRail(railStage);
+                              }}
+                            >
+                              <span className="board-rail__count">
+                                {tickets.length}
+                              </span>
+                              <span className="board-rail__label">
+                                {stage.label}
+                              </span>
+                            </button>
+                          ) : (
+                            <>
+                              <div className="board-column__heading">
+                                {isRail ? (
                                   <button
                                     type="button"
-                                    className="work-ticket__title"
-                                    onClick={() =>
-                                      setSelectedTicketId(ticket.id)
-                                    }
-                                    aria-label={`View details: ${ticket.title}`}
+                                    className="board-column__fold"
+                                    aria-expanded="true"
+                                    aria-controls={`board-column-${stage.id}`}
+                                    onClick={() => {
+                                      if (railStage) toggleRail(railStage);
+                                    }}
                                   >
-                                    {ticket.title}
+                                    <span>{stage.label}</span>
+                                    <span className="board-column__count">
+                                      {tickets.length}
+                                    </span>
                                   </button>
-                                  {ticket.description && (
-                                    <p className="work-ticket__description">
-                                      {ticket.description}
-                                    </p>
+                                ) : (
+                                  <>
+                                    <h3>
+                                      <span aria-hidden="true" />
+                                      {stage.label}
+                                    </h3>
+                                    <span
+                                      className={`board-column__wip${atLimit ? " board-column__wip--full" : ""}`}
+                                    >
+                                      {tickets.length}/{limit}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                              {!isRail && limit !== null && (
+                                <div
+                                  className={`board-column__progress board-column__progress--${stage.id}`}
+                                  role="progressbar"
+                                  aria-label={`${stage.label} WIP limit`}
+                                  aria-valuemin={0}
+                                  aria-valuemax={limit}
+                                  aria-valuenow={Math.min(
+                                    tickets.length,
+                                    limit,
                                   )}
-                                  <div className="work-ticket__assignee">
-                                    {agent ? (
-                                      <>
-                                        <AgentAvatar
-                                          agentId={agent.id}
-                                          name={agent.displayName}
-                                          avatarSeed={agent.avatarSeed}
-                                          status={avatarStatus(ticket)}
-                                          size={26}
-                                          decorative
-                                        />
-                                        <span>{agent.displayName}</span>
-                                      </>
-                                    ) : (
-                                      <>
+                                >
+                                  <span
+                                    style={{
+                                      width: `${Math.min(tickets.length / limit, 1) * 100}%`,
+                                    }}
+                                  />
+                                </div>
+                              )}
+                              <div className="board-column__tickets">
+                                {tickets.length === 0 && (
+                                  <div className="column-empty">
+                                    {stage.id === "todo"
+                                      ? "Your next idea goes here."
+                                      : "Nothing here yet."}
+                                  </div>
+                                )}
+                                {tickets.map((ticket) => {
+                                  const agent = project.agents.find(
+                                    (member) =>
+                                      member.id === ticket.assignedAgentId,
+                                  );
+                                  return (
+                                    <article
+                                      className={`work-ticket${ticket.execution === "waiting_user" ? " work-ticket--waiting" : ticket.execution === "failed" ? " work-ticket--failed" : ""}`}
+                                      key={ticket.id}
+                                      data-ticket-id={ticket.id}
+                                      data-execution={ticket.execution}
+                                    >
+                                      <div className="work-ticket__meta">
                                         <span
-                                          className="unassigned-mark"
-                                          aria-hidden="true"
+                                          className={`execution-label execution-label--${ticket.execution}`}
                                         >
-                                          ○
+                                          {executionLabels[ticket.execution]}
                                         </span>
-                                        <span>Unassigned</span>
-                                      </>
-                                    )}
-                                  </div>
-                                  <div className="work-ticket__actions">
-                                    {runControls(ticket)}
-                                  </div>
-                                </article>
-                              );
-                            })}
-                          </div>
+                                        <span
+                                          className={`work-ticket__mode work-ticket__mode--${ticket.mode}`}
+                                        >
+                                          {ticket.mode === "codex"
+                                            ? "CODEX"
+                                            : "SIM"}
+                                        </span>
+                                      </div>
+                                      <button
+                                        type="button"
+                                        className="work-ticket__title"
+                                        onClick={() =>
+                                          setSelectedTicketId(ticket.id)
+                                        }
+                                        aria-label={`View details: ${ticket.title}`}
+                                      >
+                                        {ticket.title}
+                                      </button>
+                                      {ticket.description && (
+                                        <p className="work-ticket__description">
+                                          {ticket.description}
+                                        </p>
+                                      )}
+                                      <div className="work-ticket__assignee">
+                                        {agent ? (
+                                          <>
+                                            <AgentAvatar
+                                              agentId={agent.id}
+                                              name={agent.displayName}
+                                              avatarSeed={agent.avatarSeed}
+                                              status={avatarStatus(ticket)}
+                                              size={26}
+                                              decorative
+                                            />
+                                            <span>{agent.displayName}</span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span
+                                              className="unassigned-mark"
+                                              aria-hidden="true"
+                                            >
+                                              ○
+                                            </span>
+                                            <span>Unassigned</span>
+                                          </>
+                                        )}
+                                      </div>
+                                      <div className="work-ticket__actions">
+                                        {runControls(ticket)}
+                                      </div>
+                                    </article>
+                                  );
+                                })}
+                              </div>
+                            </>
+                          )}
                         </section>
                       );
                     })}
@@ -913,6 +1048,74 @@ export function App() {
                 {pending.has("repository")
                   ? "Saving repository..."
                   : "Save repository"}
+              </button>
+            </form>
+            <form className="board-settings" onSubmit={saveBoardSettings}>
+              <div className="board-settings__heading">
+                <h3>Board settings</h3>
+                <p>
+                  Set work limits and choose whether waiting tickets appear
+                  above the board.
+                </p>
+              </div>
+              <fieldset className="wip-limit-grid">
+                <legend>Work in progress limits</legend>
+                {(
+                  [
+                    ["implementation", "Building"],
+                    ["review", "Review"],
+                    ["qa", "QA"],
+                  ] as const
+                ).map(([stage, label]) => (
+                  <label className="wip-limit-field" key={stage}>
+                    <span>{label}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      step={1}
+                      required
+                      value={boardSettingsDraft?.wipLimits[stage] ?? 1}
+                      disabled={
+                        !boardSettingsDraft || pending.has("board-settings")
+                      }
+                      onChange={(event) =>
+                        updateWipLimit(stage, event.currentTarget.valueAsNumber)
+                      }
+                    />
+                  </label>
+                ))}
+              </fieldset>
+              <label className="needs-lane-setting">
+                <input
+                  type="checkbox"
+                  checked={boardSettingsDraft?.showNeedsLane ?? false}
+                  disabled={
+                    !boardSettingsDraft || pending.has("board-settings")
+                  }
+                  onChange={(event) =>
+                    setBoardSettingsDraft((current) =>
+                      current
+                        ? { ...current, showNeedsLane: event.target.checked }
+                        : current,
+                    )
+                  }
+                />
+                <span>Show a Needs you lane above the board</span>
+              </label>
+              <button
+                type="submit"
+                className="button button--primary"
+                disabled={
+                  !boardSettingsDraft ||
+                  pending.has("board-settings") ||
+                  JSON.stringify(boardSettingsDraft) ===
+                    JSON.stringify(project.boardSettings)
+                }
+              >
+                {pending.has("board-settings")
+                  ? "Saving board settings…"
+                  : "Save board settings"}
               </button>
             </form>
           </>
@@ -1062,11 +1265,9 @@ export function App() {
         </div>
       </Modal>
       {view === "board" && selectedTicket && (
-        <dialog
-          ref={ticketDialogRef}
-          className="ticket-detail"
+        <section
+          className="ticket-inspector"
           aria-labelledby="ticket-detail-title"
-          onCancel={() => setSelectedTicketId(null)}
         >
           <div className="ticket-detail__heading">
             <span
@@ -1087,6 +1288,32 @@ export function App() {
             {executionLabels[selectedTicket.execution]}
           </p>
           <h2 id="ticket-detail-title">{selectedTicket.title}</h2>
+          <section
+            className="ticket-stage-timeline"
+            aria-label="Ticket stage timeline"
+          >
+            {stages.map((stage) => {
+              const currentIndex = stages.findIndex(
+                (item) => item.id === selectedTicket.stage,
+              );
+              const stageIndex = stages.findIndex(
+                (item) => item.id === stage.id,
+              );
+              return (
+                <span
+                  className={
+                    stageIndex < currentIndex
+                      ? "ticket-stage-timeline__segment ticket-stage-timeline__segment--complete"
+                      : stageIndex === currentIndex
+                        ? "ticket-stage-timeline__segment ticket-stage-timeline__segment--current"
+                        : "ticket-stage-timeline__segment"
+                  }
+                  key={stage.id}
+                  title={stage.label}
+                />
+              );
+            })}
+          </section>
           <p className="ticket-detail__description">
             {selectedTicket.description || "No description added."}
           </p>
@@ -1118,9 +1345,11 @@ export function App() {
           {selectedTicket.workspace && (
             <dl className="ticket-workspace">
               <dt>Workspace</dt>
-              <dd>{selectedTicket.workspace.path}</dd>
+              <dd className="machine-text">{selectedTicket.workspace.path}</dd>
               <dt>Branch</dt>
-              <dd>{selectedTicket.workspace.branch}</dd>
+              <dd className="machine-text">
+                {selectedTicket.workspace.branch}
+              </dd>
               <dt>Changes</dt>
               <dd>
                 {selectedTicket.workspace.dirty
@@ -1162,6 +1391,23 @@ export function App() {
             </p>
           )}
           <div className="ticket-detail__controls">
+            <div className="ticket-inspector__actions">
+              <button
+                type="button"
+                className="button button--small button--quiet"
+                onClick={showChat}
+              >
+                Open in chat
+              </button>
+              <button
+                type="button"
+                className="button button--small button--quiet"
+                disabled
+                title="Diff viewing will be available with ticket change summaries."
+              >
+                View diff
+              </button>
+            </div>
             {runControls(selectedTicket)}
             {project?.repositoryPath && selectedTicket.stage !== "done" && (
               <p className="workspace-preparation__hint">
@@ -1186,7 +1432,7 @@ export function App() {
                 <li key={entry.id}>{entry.message}</li>
               ))}
           </ol>
-        </dialog>
+        </section>
       )}
     </>
   );

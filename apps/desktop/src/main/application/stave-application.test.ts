@@ -13,6 +13,22 @@ function setup(runner?: StageRunner) {
   return { app, ticket };
 }
 describe("StaveApplication", () => {
+  it("persists project board settings in the workspace snapshot", () => {
+    const { app } = setup();
+    const snapshot = app.setBoardSettings({
+      settings: {
+        wipLimits: { implementation: 3, review: 1, qa: 4 },
+        showNeedsLane: true,
+      },
+    });
+
+    expect(snapshot.project?.boardSettings).toEqual({
+      wipLimits: { implementation: 3, review: 1, qa: 4 },
+      showNeedsLane: true,
+    });
+    expect(parseWorkspaceSnapshot(snapshot)).toEqual(snapshot);
+  });
+
   it("serializes workspace preparation and preserves existing dirty workspace details", async () => {
     let ready: (value: {
       path: string;

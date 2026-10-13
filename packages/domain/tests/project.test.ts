@@ -20,6 +20,10 @@ describe("createProject", () => {
     expect(project.name).toBe("Stave");
     expect(project.teamTemplateId).toBe("software_delivery");
     expect(project.teamTemplateVersion).toBe(1);
+    expect(project.boardSettings).toEqual({
+      wipLimits: { implementation: 2, review: 1, qa: 2 },
+      showNeedsLane: false,
+    });
     expect(
       project.agents.map(({ displayName, role }) => ({ displayName, role })),
     ).toEqual([

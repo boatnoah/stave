@@ -1,3 +1,4 @@
+import type { ProjectBoardSettings } from "@stave/domain";
 import type {
   RunMode,
   WorkspaceEvent,
@@ -11,6 +12,10 @@ export interface CreateProjectRequest {
 
 export interface RepositoryRequest {
   readonly repositoryPath: string;
+}
+
+export interface BoardSettingsRequest {
+  readonly settings: ProjectBoardSettings;
 }
 
 export interface CreateTicketRequest {
@@ -33,6 +38,9 @@ export interface StaveDesktopApi {
   readonly projects: {
     readonly setRepository: (
       request: RepositoryRequest,
+    ) => Promise<WorkspaceSnapshot>;
+    readonly setBoardSettings: (
+      request: BoardSettingsRequest,
     ) => Promise<WorkspaceSnapshot>;
     readonly create: (
       request: CreateProjectRequest,

@@ -2,6 +2,7 @@ import type { IpcMain, IpcMainInvokeEvent } from "electron";
 
 import {
   ipcChannels,
+  parseBoardSettingsRequest,
   parseCreateProjectRequest,
   parseCreateTicketRequest,
   parseRepositoryRequest,
@@ -51,6 +52,10 @@ export function registerStaveIpc({
     authorize(event);
     return application.setRepository(parseRepositoryRequest(request));
   });
+  ipcMain.handle(ipcChannels.setBoardSettings, (event, request: unknown) => {
+    authorize(event);
+    return application.setBoardSettings(parseBoardSettingsRequest(request));
+  });
   ipcMain.handle(ipcChannels.prepareWorkspace, (event, request: unknown) => {
     authorize(event);
     return application.prepareWorkspace(parseTicketRequest(request));
@@ -62,6 +67,7 @@ export function registerStaveIpc({
   return () => {
     unsubscribe();
     ipcMain.removeHandler(ipcChannels.setRepository);
+    ipcMain.removeHandler(ipcChannels.setBoardSettings);
     ipcMain.removeHandler(ipcChannels.prepareWorkspace);
     ipcMain.removeHandler(ipcChannels.getWorkspaceSnapshot);
     ipcMain.removeHandler(ipcChannels.createProject);
