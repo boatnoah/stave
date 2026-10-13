@@ -2706,6 +2706,82 @@ kbd {
   padding: 20px 24px;
 }
 
+.chat-composer {
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  display: grid;
+  gap: 10px;
+  margin: 0 20px 12px;
+  padding: 10px 12px 8px;
+}
+
+.chat-composer:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.chat-composer textarea {
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  line-height: 1.5;
+  min-height: 44px;
+  outline: none;
+  resize: vertical;
+  width: 100%;
+}
+
+.chat-composer textarea::placeholder {
+  color: var(--text-3);
+}
+
+.chat-composer__footer,
+.chat-composer__chips {
+  align-items: center;
+  display: flex;
+  gap: 6px;
+  min-width: 0;
+}
+
+.chat-composer__footer {
+  justify-content: space-between;
+}
+
+.chat-composer__chips {
+  flex-wrap: wrap;
+}
+
+.chat-composer__chips button {
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  color: var(--text-2);
+  cursor: pointer;
+  font: 10px var(--font-code);
+  padding: 3px 6px;
+}
+
+.chat-composer__chips button:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.chat-composer__hint {
+  color: var(--text-3);
+  font-size: 10px;
+  margin: 0;
+}
+
+.chat-mention {
+  color: var(--accent);
+}
+
+.chat-mention--you {
+  color: var(--waiting);
+}
+
 @media (max-width: 900px) {
   .chat-workspace {
     grid-template-columns: 210px minmax(0, 1fr);

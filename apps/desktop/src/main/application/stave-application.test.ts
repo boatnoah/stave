@@ -13,6 +13,60 @@ function setup(runner?: StageRunner) {
   return { app, ticket };
 }
 describe("StaveApplication", () => {
+  it("stores user messages and dispatches supported chat commands", async () => {
+    const { app } = setup();
+    const team = await app.sendChatMessage({
+      text: "Ship it @Maya @you",
+      channel: "team",
+    });
+    expect(team.chatMessages[0]).toMatchObject({
+      author: "user",
+      channel: "team",
+      text: "Ship it @Maya @you",
+    });
+    expect(
+      team.activity.some((entry) => entry.message.startsWith("You:")),
+    ).toBe(false);
+
+    const created = await app.sendChatMessage({
+      text: "/ticket Add keyboard shortcuts",
+      channel: "team",
+    });
+    expect(created.tickets.at(-1)).toMatchObject({
+      key: "STV-2",
+      title: "Add keyboard shortcuts",
+    });
+
+    const assigned = await app.sendChatMessage({
+      text: "/assign STV-2 Maya",
+      channel: "ticket",
+      ticketId: created.tickets[1]?.id,
+    });
+    expect(assigned.tickets.at(-1)?.assignedAgentId).toBe(
+      assigned.project?.agents[0]?.id,
+    );
+    expect(parseWorkspaceSnapshot(assigned)).toEqual(assigned);
+  });
+
+  it("runs and cancels a ticket from chat commands", async () => {
+    const { app, ticket } = setup();
+    const started = await app.sendChatMessage({
+      text: "/run STV-1",
+      channel: "team",
+    });
+    expect(started.tickets[0]?.execution).toBe("running");
+    const canceled = await app.sendChatMessage({
+      text: "/cancel STV-1",
+      channel: "ticket",
+      ticketId: ticket.id,
+    });
+    expect(canceled.tickets[0]?.execution).toBe("canceled");
+    expect(canceled.chatMessages.map((message) => message.text)).toEqual([
+      "/run STV-1",
+      "/cancel STV-1",
+    ]);
+  });
+
   it("assigns sequential keys and retains ticket metadata", () => {
     const { app, ticket: firstTicket } = setup();
     const snapshot = app.createTicket({

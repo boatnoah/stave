@@ -15,6 +15,7 @@ export interface ChatMessage {
   readonly role: string | null;
   readonly text: string;
   readonly createdAt: string;
+  readonly channel?: "team" | "releases" | "ticket" | "direct";
 }
 
 const agentRoles: Record<AgentSnapshot["role"], string> = {
@@ -76,10 +77,24 @@ export function buildChatMessages(
     ];
   });
 
-  return [...activityMessages, ...runMessages].sort((left, right) => {
-    const byTime = left.createdAt.localeCompare(right.createdAt);
-    return byTime || left.id.localeCompare(right.id);
-  });
+  const userMessages = snapshot.chatMessages.map((message) => ({
+    id: `chat-${message.id}`,
+    kind: "user" as const,
+    ticketId: message.ticketId,
+    agentId: message.agentId,
+    author: "You",
+    role: null,
+    text: message.text,
+    createdAt: message.createdAt,
+    channel: message.channel,
+  }));
+
+  return [...activityMessages, ...runMessages, ...userMessages].sort(
+    (left, right) => {
+      const byTime = left.createdAt.localeCompare(right.createdAt);
+      return byTime || left.id.localeCompare(right.id);
+    },
+  );
 }
 
 export function isSuccessfulRelease(

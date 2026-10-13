@@ -14,6 +14,7 @@ import type {
   BoardSettingsRequest,
   CreateProjectRequest,
   CreateTicketRequest,
+  SendChatMessageRequest,
   StartRunRequest,
   TicketRequest,
 } from "./desktop-api";
@@ -37,6 +38,7 @@ export const ipcChannels = {
   startRun: "stave:runs:start",
   cancelRun: "stave:runs:cancel",
   workspaceEvent: "stave:events:workspace",
+  sendChatMessage: "stave:chat:send-message",
 } as const;
 
 function requireRecord(value: unknown, label: string): Record<string, unknown> {
@@ -252,7 +254,7 @@ function records(value: unknown, label: string): Record<string, unknown>[] {
 }
 function parseWork(
   snapshot: Record<string, unknown>,
-): Pick<WorkspaceSnapshot, "tickets" | "activity" | "runs"> {
+): Pick<WorkspaceSnapshot, "tickets" | "activity" | "runs" | "chatMessages"> {
   return {
     tickets: records(snapshot.tickets, "Tickets").map((ticket, index) => {
       const workspace =
@@ -301,6 +303,67 @@ function parseWork(
         summary: requireText(run.summary, "Summary"),
       };
     }),
+    chatMessages: (snapshot.chatMessages === undefined
+      ? []
+      : records(snapshot.chatMessages, "Chat messages")
+    ).map((message) => {
+      const channel = message.channel;
+      if (
+        channel !== "team" &&
+        channel !== "releases" &&
+        channel !== "ticket" &&
+        channel !== "direct"
+      )
+        throw new Error("Invalid chat channel");
+      if (message.author !== "user") throw new Error("Invalid chat author");
+      return {
+        id: requireString(message.id, "Chat message id"),
+        author: "user" as const,
+        text: requireString(message.text, "Chat message"),
+        channel,
+        ticketId: nullableString(message.ticketId, "Ticket id"),
+        agentId: nullableString(message.agentId, "Agent id"),
+        createdAt: requireString(message.createdAt, "Created at"),
+      };
+    }),
+  };
+}
+
+export function parseSendChatMessageRequest(
+  value: unknown,
+): SendChatMessageRequest {
+  const record = requireRecord(value, "Chat message request");
+  const channel = record.channel;
+  if (
+    channel !== "team" &&
+    channel !== "releases" &&
+    channel !== "ticket" &&
+    channel !== "direct"
+  )
+    throw new Error("Invalid chat channel");
+  const text = requireString(record.text, "Chat message");
+  if (text.length > 4000) throw new Error("Chat message is too long");
+  const ticketId =
+    record.ticketId === undefined
+      ? undefined
+      : requireString(record.ticketId, "Ticket id");
+  const agentId =
+    record.agentId === undefined
+      ? undefined
+      : requireString(record.agentId, "Agent id");
+  if (channel === "ticket" && !ticketId)
+    throw new Error("Ticket thread messages need a ticket");
+  if (channel === "direct" && !agentId)
+    throw new Error("Direct messages need an agent");
+  if (channel !== "ticket" && ticketId)
+    throw new Error("Ticket id is only valid in a ticket thread");
+  if (channel !== "direct" && agentId)
+    throw new Error("Agent id is only valid in a direct message");
+  return {
+    text,
+    channel,
+    ...(ticketId ? { ticketId } : {}),
+    ...(agentId ? { agentId } : {}),
   };
 }
 

@@ -9,6 +9,7 @@ import type {
   CreateProjectRequest,
   CreateTicketRequest,
   RepositoryRequest,
+  SendChatMessageRequest,
   StartRunRequest,
   TicketRequest,
 } from "../../shared/desktop-api";
@@ -80,6 +81,7 @@ export class StaveApplication {
     tickets: [],
     activity: [],
     runs: [],
+    chatMessages: [],
   };
   readonly #listeners = new Set<WorkspaceListener>();
   readonly #runner: StageRunner;
@@ -213,6 +215,117 @@ export class StaveApplication {
       null,
       "Board settings updated",
     );
+  }
+
+  async sendChatMessage(
+    request: SendChatMessageRequest,
+  ): Promise<WorkspaceSnapshot> {
+    const project = this.#snapshot.project;
+    if (!project) throw new Error("Create a project first");
+    if (request.ticketId) this.#ticket(request.ticketId);
+    if (
+      request.agentId &&
+      !project.agents.some((agent) => agent.id === request.agentId)
+    )
+      throw new Error("Agent not found");
+    const command = request.text.trim();
+    if (
+      command.startsWith("/") &&
+      !/^\/(?:run\s+STV-[1-9]\d*|cancel\s+STV-[1-9]\d*|ticket\s+.+|assign\s+STV-[1-9]\d*\s+.+)$/iu.test(
+        command,
+      )
+    )
+      throw new Error(
+        "Use /run STV-1, /ticket title, /assign STV-1 agent, or /cancel STV-1",
+      );
+    const referencedKey = /^\/(?:run|cancel|assign)\s+(STV-[1-9]\d*)/iu.exec(
+      command,
+    )?.[1];
+    if (
+      referencedKey &&
+      !this.#snapshot.tickets.some(
+        (ticket) => ticket.key.toUpperCase() === referencedKey.toUpperCase(),
+      )
+    )
+      throw new Error(`Ticket ${referencedKey} not found`);
+    const assignment = /^\/assign\s+STV-[1-9]\d*\s+(.+)$/iu.exec(command);
+    if (
+      assignment &&
+      !project.agents.some(
+        (agent) =>
+          agent.displayName.toLowerCase() ===
+          (assignment[1] ?? "").toLowerCase(),
+      )
+    )
+      throw new Error(`Agent ${assignment[1] ?? ""} not found`);
+    const message = {
+      id: crypto.randomUUID(),
+      author: "user" as const,
+      text: request.text,
+      channel: request.channel,
+      ticketId: request.ticketId ?? null,
+      agentId: request.agentId ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    const snapshot = this.#change({
+      ...this.#snapshot,
+      chatMessages: [...this.#snapshot.chatMessages, message].slice(-1000),
+    });
+
+    const run = /^\/run\s+(STV-[1-9]\d*)$/iu.exec(command);
+    if (run) {
+      const ticket = this.#snapshot.tickets.find(
+        (candidate) =>
+          candidate.key.toUpperCase() === (run[1] ?? "").toUpperCase(),
+      );
+      if (!ticket) throw new Error(`Ticket ${run[1] ?? ""} not found`);
+      return this.startRun({ ticketId: ticket.id, mode: ticket.mode });
+    }
+    const cancel = /^\/cancel\s+(STV-[1-9]\d*)$/iu.exec(command);
+    if (cancel) {
+      const ticket = this.#snapshot.tickets.find(
+        (candidate) =>
+          candidate.key.toUpperCase() === (cancel[1] ?? "").toUpperCase(),
+      );
+      if (!ticket) throw new Error(`Ticket ${cancel[1] ?? ""} not found`);
+      return this.cancelRun({ ticketId: ticket.id });
+    }
+    const create = /^\/ticket\s+(.+)$/iu.exec(command);
+    if (create) {
+      return this.createTicket({
+        title: create[1] ?? "",
+        description: "",
+        type: "task",
+        priority: "medium",
+      });
+    }
+    const assign = /^\/assign\s+(STV-[1-9]\d*)\s+(.+)$/iu.exec(command);
+    if (assign) {
+      const ticket = this.#snapshot.tickets.find(
+        (candidate) =>
+          candidate.key.toUpperCase() === (assign[1] ?? "").toUpperCase(),
+      );
+      const agent = project.agents.find(
+        (candidate) =>
+          candidate.displayName.toLowerCase() ===
+          (assign[2] ?? "").toLowerCase(),
+      );
+      if (!ticket) throw new Error(`Ticket ${assign[1] ?? ""} not found`);
+      if (!agent) throw new Error(`Agent ${assign[2] ?? ""} not found`);
+      return this.#change(
+        {
+          ...this.#snapshot,
+          tickets: this.#snapshot.tickets.map((candidate) =>
+            candidate.id === ticket.id
+              ? { ...candidate, assignedAgentId: agent.id }
+              : candidate,
+          ),
+        },
+        ticket.id,
+        `Assigned ${ticket.key} to ${agent.displayName}`,
+      );
+    }
+    return snapshot;
   }
 
   async prepareWorkspace(request: TicketRequest): Promise<WorkspaceSnapshot> {

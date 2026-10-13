@@ -125,6 +125,26 @@ test("runs a simulated ticket to done and restores it after restart", async () =
   await expect(page.locator(".chat-messages")).toContainText(
     "Simulated qa passed",
   );
+  await page.getByLabel("Message #team").fill("Build looks good @Maya @you");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".chat-messages")).toContainText(
+    "Build looks good @Maya @you",
+  );
+  await expect(page.locator(".chat-mention--you")).toContainText("@you");
+
+  await page.getByLabel("Message #team").fill("/ticket Add keyboard shortcuts");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(
+    page
+      .getByRole("complementary", { name: "Chat navigation" })
+      .getByRole("button", { name: /STV-2 Add keyboard shortcuts/ }),
+  ).toBeVisible();
+  await page.getByLabel("Message #team").fill("/assign STV-2 Maya");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".chat-messages")).toContainText(
+    "Assigned STV-2 to Maya",
+  );
+
   await page
     .getByRole("complementary", { name: "Chat navigation" })
     .getByRole("button", { name: /STV-1 Prove the board works/ })
@@ -132,6 +152,11 @@ test("runs a simulated ticket to done and restores it after restart", async () =
   await expect(
     page.getByRole("region", { name: "Ticket summary" }),
   ).toContainText("Prove the board works");
+  await page.getByLabel("Message STV-1").fill("Thread reply @you");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".chat-messages")).toContainText(
+    "Thread reply @you",
+  );
   await page.getByRole("button", { name: "Chat", exact: true }).click();
   await page.getByRole("button", { name: "#releases" }).click();
   await expect(page.getByRole("heading", { name: "#releases" })).toBeVisible();
@@ -142,6 +167,11 @@ test("runs a simulated ticket to done and restores it after restart", async () =
   await expect(page.getByRole("heading", { name: "Alex" })).toBeVisible();
   await expect(page.locator(".chat-messages")).toContainText(
     "Alex started simulated implementation",
+  );
+  await page.getByLabel("Message Alex").fill("I sent you the latest update");
+  await page.getByRole("button", { name: "Send" }).click();
+  await expect(page.locator(".chat-messages")).toContainText(
+    "I sent you the latest update",
   );
   await first.app.close();
 
@@ -161,4 +191,22 @@ test("runs a simulated ticket to done and restores it after restart", async () =
     second.page.getByLabel("Show a Needs you lane above the board"),
   ).toBeChecked();
   await second.app.close();
+
+  const third = await launch();
+  await third.page.getByRole("button", { name: "Chat", exact: true }).click();
+  await expect(third.page.locator(".chat-messages")).toContainText(
+    "Build looks good @Maya @you",
+  );
+  await third.page
+    .getByRole("complementary", { name: "Chat navigation" })
+    .getByRole("button", { name: /STV-1 Prove the board works/ })
+    .click();
+  await expect(third.page.locator(".chat-messages")).toContainText(
+    "Thread reply @you",
+  );
+  await third.page.getByRole("button", { name: "Alex", exact: true }).click();
+  await expect(third.page.locator(".chat-messages")).toContainText(
+    "I sent you the latest update",
+  );
+  await third.app.close();
 });

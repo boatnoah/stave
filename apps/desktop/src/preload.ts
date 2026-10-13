@@ -3,6 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import type { StaveDesktopApi } from "./shared/desktop-api";
 import {
   ipcChannels,
+  parseSendChatMessageRequest,
   parseWorkspaceEvent,
   parseWorkspaceSnapshot,
 } from "./shared/ipc-contract";
@@ -49,6 +50,15 @@ const desktopApi: StaveDesktopApi = Object.freeze({
     cancel: async (request) =>
       parseWorkspaceSnapshot(
         await ipcRenderer.invoke(ipcChannels.cancelRun, request),
+      ),
+  }),
+  chat: Object.freeze<StaveDesktopApi["chat"]>({
+    send: async (request) =>
+      parseWorkspaceSnapshot(
+        await ipcRenderer.invoke(
+          ipcChannels.sendChatMessage,
+          parseSendChatMessageRequest(request),
+        ),
       ),
   }),
   events: Object.freeze<StaveDesktopApi["events"]>({

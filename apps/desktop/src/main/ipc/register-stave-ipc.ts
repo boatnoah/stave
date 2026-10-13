@@ -6,6 +6,7 @@ import {
   parseCreateProjectRequest,
   parseCreateTicketRequest,
   parseRepositoryRequest,
+  parseSendChatMessageRequest,
   parseStartRunRequest,
   parseTicketRequest,
 } from "../../shared/ipc-contract";
@@ -48,6 +49,10 @@ export function registerStaveIpc({
     authorize(event);
     return application.cancelRun(parseTicketRequest(request));
   });
+  ipcMain.handle(ipcChannels.sendChatMessage, (event, request: unknown) => {
+    authorize(event);
+    return application.sendChatMessage(parseSendChatMessageRequest(request));
+  });
   ipcMain.handle(ipcChannels.setRepository, (event, request: unknown) => {
     authorize(event);
     return application.setRepository(parseRepositoryRequest(request));
@@ -74,5 +79,6 @@ export function registerStaveIpc({
     ipcMain.removeHandler(ipcChannels.createTicket);
     ipcMain.removeHandler(ipcChannels.startRun);
     ipcMain.removeHandler(ipcChannels.cancelRun);
+    ipcMain.removeHandler(ipcChannels.sendChatMessage);
   };
 }

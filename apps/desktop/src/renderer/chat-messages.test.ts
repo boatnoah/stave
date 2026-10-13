@@ -50,6 +50,7 @@ const snapshot: WorkspaceSnapshot = {
       summary: "Review passed.",
     },
   ],
+  chatMessages: [],
 };
 
 describe("buildChatMessages", () => {
