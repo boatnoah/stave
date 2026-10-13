@@ -563,7 +563,7 @@ export function App() {
       <header className="shell-titlebar">
         <div className="shell-titlebar__identity">
           <img className="shell-brand__mark" src={staveMarkUrl} alt="" />
-          <span className="shell-brand__name">Stave</span>
+          <span className="shell-brand__name">stave</span>
           <nav className="shell-tabs" aria-label="Primary">
             <button
               type="button"
