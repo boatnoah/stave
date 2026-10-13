@@ -1,4 +1,9 @@
-import { agentId, createProject, projectId } from "@stave/domain";
+import {
+  agentId,
+  createProject,
+  createTicketDetails,
+  projectId,
+} from "@stave/domain";
 import type {
   BoardSettingsRequest,
   CreateProjectRequest,
@@ -247,6 +252,7 @@ export class StaveApplication {
     if (!title) throw new Error("Ticket title cannot be empty");
     const ticket: TicketSnapshot = {
       id: crypto.randomUUID(),
+      ...createTicketDetails(this.#snapshot.tickets.length + 1, request),
       title,
       description: request.description.trim(),
       stage: "todo",

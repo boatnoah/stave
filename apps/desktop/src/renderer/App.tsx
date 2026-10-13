@@ -1,5 +1,14 @@
 import { AgentAvatar, type AvatarStatus } from "@stave/avatar";
-import type { BoardWorkStage, ProjectBoardSettings } from "@stave/domain";
+import {
+  type BoardWorkStage,
+  defaultTicketPriority,
+  defaultTicketType,
+  type ProjectBoardSettings,
+  type TicketPriority,
+  type TicketType,
+  ticketPriorities,
+  ticketTypes,
+} from "@stave/domain";
 import {
   type FormEvent,
   type ReactNode,
@@ -71,6 +80,29 @@ const roleLabels: Record<DesktopAgentRole, string> = {
   tech_lead: "Tech lead",
   engineer: "Engineer",
   qa: "Quality assurance",
+};
+
+const ticketTypeLabels: Record<TicketType, string> = {
+  task: "Task",
+  bug: "Bug",
+  feature: "Feature",
+  chore: "Chore",
+  research: "Research",
+};
+
+const ticketTypeGlyphs: Record<TicketType, string> = {
+  task: "□",
+  bug: "◇",
+  feature: "✦",
+  chore: "⌁",
+  research: "⌕",
+};
+
+const ticketPriorityLabels: Record<TicketPriority, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+  urgent: "Urgent",
 };
 
 function avatarStatus(ticket: TicketSnapshot | undefined): AvatarStatus {
@@ -154,6 +186,13 @@ export function App() {
   const [ticketFormOpen, setTicketFormOpen] = useState(false);
   const [ticketTitle, setTicketTitle] = useState("");
   const [ticketDescription, setTicketDescription] = useState("");
+  const [ticketType, setTicketType] = useState<TicketType>(defaultTicketType);
+  const [ticketPriority, setTicketPriority] = useState<TicketPriority>(
+    defaultTicketPriority,
+  );
+  const [ticketPoints, setTicketPoints] = useState("");
+  const [ticketEpic, setTicketEpic] = useState("");
+  const [ticketLabels, setTicketLabels] = useState("");
   const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
   const [selectedChatAgentId, setSelectedChatAgentId] = useState<string | null>(
     null,
@@ -245,10 +284,23 @@ export function App() {
         window.stave.tickets.create({
           title: ticketTitle.trim(),
           description: ticketDescription.trim(),
+          type: ticketType,
+          priority: ticketPriority,
+          points: ticketPoints.trim() ? Number(ticketPoints) : null,
+          epic: ticketEpic.trim() || null,
+          labels: ticketLabels
+            .split(",")
+            .map((label) => label.trim())
+            .filter(Boolean),
         }),
       () => {
         setTicketTitle("");
         setTicketDescription("");
+        setTicketType(defaultTicketType);
+        setTicketPriority(defaultTicketPriority);
+        setTicketPoints("");
+        setTicketEpic("");
+        setTicketLabels("");
         setTicketFormOpen(false);
       },
     );
@@ -719,6 +771,102 @@ export function App() {
                           disabled={pending.has("ticket")}
                         />
                       </div>
+                      <fieldset className="ticket-form__metadata">
+                        <legend>Ticket details</legend>
+                        <label
+                          className="ticket-form__field"
+                          htmlFor="ticket-type"
+                        >
+                          <span>Type</span>
+                          <select
+                            id="ticket-type"
+                            value={ticketType}
+                            onChange={(event) =>
+                              setTicketType(event.target.value as TicketType)
+                            }
+                            disabled={pending.has("ticket")}
+                          >
+                            {ticketTypes.map((type) => (
+                              <option key={type} value={type}>
+                                {ticketTypeLabels[type]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label
+                          className="ticket-form__field"
+                          htmlFor="ticket-priority"
+                        >
+                          <span>Priority</span>
+                          <select
+                            id="ticket-priority"
+                            value={ticketPriority}
+                            onChange={(event) =>
+                              setTicketPriority(
+                                event.target.value as TicketPriority,
+                              )
+                            }
+                            disabled={pending.has("ticket")}
+                          >
+                            {ticketPriorities.map((priority) => (
+                              <option key={priority} value={priority}>
+                                {ticketPriorityLabels[priority]}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label
+                          className="ticket-form__field"
+                          htmlFor="ticket-points"
+                        >
+                          <span>Points</span>
+                          <input
+                            id="ticket-points"
+                            type="number"
+                            min={1}
+                            max={100}
+                            step={1}
+                            value={ticketPoints}
+                            onChange={(event) =>
+                              setTicketPoints(event.target.value)
+                            }
+                            placeholder="—"
+                            disabled={pending.has("ticket")}
+                          />
+                        </label>
+                        <label
+                          className="ticket-form__field"
+                          htmlFor="ticket-epic"
+                        >
+                          <span>Epic</span>
+                          <input
+                            id="ticket-epic"
+                            value={ticketEpic}
+                            maxLength={120}
+                            onChange={(event) =>
+                              setTicketEpic(event.target.value)
+                            }
+                            placeholder="Optional epic"
+                            disabled={pending.has("ticket")}
+                          />
+                        </label>
+                        <label
+                          className="ticket-form__field ticket-form__field--labels"
+                          htmlFor="ticket-labels"
+                        >
+                          <span>Labels</span>
+                          <input
+                            id="ticket-labels"
+                            value={ticketLabels}
+                            onChange={(event) =>
+                              setTicketLabels(event.target.value)
+                            }
+                            placeholder="ui, accessibility"
+                            disabled={pending.has("ticket")}
+                          />
+                          <small>Separate with commas</small>
+                        </label>
+                      </fieldset>
                       <button
                         type="submit"
                         className="button button--primary"
@@ -872,19 +1020,27 @@ export function App() {
                                       data-ticket-id={ticket.id}
                                       data-execution={ticket.execution}
                                     >
-                                      <div className="work-ticket__meta">
-                                        <span
-                                          className={`execution-label execution-label--${ticket.execution}`}
-                                        >
-                                          {executionLabels[ticket.execution]}
-                                        </span>
-                                        <span
-                                          className={`work-ticket__mode work-ticket__mode--${ticket.mode}`}
-                                        >
-                                          {ticket.mode === "codex"
-                                            ? "CODEX"
-                                            : "SIM"}
-                                        </span>
+                                      <div className="work-ticket__tag-row">
+                                        {ticket.execution !== "ready" && (
+                                          <span
+                                            className={`execution-label execution-label--${ticket.execution}`}
+                                          >
+                                            {executionLabels[ticket.execution]}
+                                          </span>
+                                        )}
+                                        {ticket.epic && (
+                                          <span className="work-ticket__epic">
+                                            {ticket.epic}
+                                          </span>
+                                        )}
+                                        {ticket.labels.map((label) => (
+                                          <span
+                                            className="work-ticket__label"
+                                            key={label}
+                                          >
+                                            {label}
+                                          </span>
+                                        ))}
                                       </div>
                                       <button
                                         type="button"
@@ -901,31 +1057,41 @@ export function App() {
                                           {ticket.description}
                                         </p>
                                       )}
-                                      <div className="work-ticket__assignee">
-                                        {agent ? (
-                                          <>
+                                      <footer className="work-ticket__footer">
+                                        <div className="work-ticket__identity">
+                                          <span aria-hidden="true">
+                                            {ticketTypeGlyphs[ticket.type]}
+                                          </span>
+                                          <span className="visually-hidden">
+                                            {ticketTypeLabels[ticket.type]}
+                                          </span>
+                                          <code>{ticket.key}</code>
+                                        </div>
+                                        <div className="work-ticket__details">
+                                          {ticket.points !== null && (
+                                            <span>{ticket.points} pts</span>
+                                          )}
+                                          <span
+                                            className={`ticket-priority ticket-priority--${ticket.priority}`}
+                                          >
+                                            {
+                                              ticketPriorityLabels[
+                                                ticket.priority
+                                              ]
+                                            }
+                                          </span>
+                                          {agent && (
                                             <AgentAvatar
                                               agentId={agent.id}
                                               name={agent.displayName}
                                               avatarSeed={agent.avatarSeed}
                                               status={avatarStatus(ticket)}
-                                              size={26}
+                                              size={24}
                                               decorative
                                             />
-                                            <span>{agent.displayName}</span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <span
-                                              className="unassigned-mark"
-                                              aria-hidden="true"
-                                            >
-                                              ○
-                                            </span>
-                                            <span>Unassigned</span>
-                                          </>
-                                        )}
-                                      </div>
+                                          )}
+                                        </div>
+                                      </footer>
                                       <div className="work-ticket__actions">
                                         {runControls(ticket)}
                                       </div>
@@ -1270,11 +1436,14 @@ export function App() {
           aria-labelledby="ticket-detail-title"
         >
           <div className="ticket-detail__heading">
-            <span
-              className={`simulation-badge ${selectedTicket.mode === "codex" ? "simulation-badge--codex" : ""}`}
-            >
-              {selectedTicket.mode === "codex" ? "Codex" : "Simulation"}
-            </span>
+            <div className="ticket-inspector__identity">
+              <span
+                className={`simulation-badge ${selectedTicket.mode === "codex" ? "simulation-badge--codex" : ""}`}
+              >
+                {selectedTicket.mode === "codex" ? "Codex" : "Simulation"}
+              </span>
+              <code>{selectedTicket.key}</code>
+            </div>
             <button
               type="button"
               className="text-button"
@@ -1314,6 +1483,40 @@ export function App() {
               );
             })}
           </section>
+          <dl className="ticket-metadata">
+            <div>
+              <dt>Type</dt>
+              <dd>{ticketTypeLabels[selectedTicket.type]}</dd>
+            </div>
+            <div>
+              <dt>Priority</dt>
+              <dd
+                className={`ticket-priority ticket-priority--${selectedTicket.priority}`}
+              >
+                {ticketPriorityLabels[selectedTicket.priority]}
+              </dd>
+            </div>
+            <div>
+              <dt>Points</dt>
+              <dd>{selectedTicket.points ?? "—"}</dd>
+            </div>
+            <div>
+              <dt>Epic</dt>
+              <dd>{selectedTicket.epic ?? "—"}</dd>
+            </div>
+          </dl>
+          {selectedTicket.labels.length > 0 && (
+            <section
+              className="ticket-metadata__labels"
+              aria-label="Ticket labels"
+            >
+              {selectedTicket.labels.map((label) => (
+                <span className="work-ticket__label" key={label}>
+                  {label}
+                </span>
+              ))}
+            </section>
+          )}
           <p className="ticket-detail__description">
             {selectedTicket.description || "No description added."}
           </p>

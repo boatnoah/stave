@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   agentId,
   createProject,
+  createTicketDetails,
+  createTicketKey,
+  defaultTicketPriority,
+  defaultTicketType,
   instantiateTeam,
   nextStage,
   projectId,
@@ -109,6 +113,39 @@ describe("createProject", () => {
         ],
       }),
     ).toThrow("Team template contains duplicate member key");
+  });
+});
+
+describe("ticket details", () => {
+  it("creates stable per-project sequence keys and default metadata", () => {
+    expect(createTicketKey(1)).toBe("STV-1");
+    expect(createTicketDetails(2)).toEqual({
+      key: "STV-2",
+      type: defaultTicketType,
+      priority: defaultTicketPriority,
+      points: null,
+      epic: null,
+      labels: [],
+    });
+  });
+
+  it("normalizes optional ticket details", () => {
+    expect(
+      createTicketDetails(3, {
+        type: "feature",
+        priority: "high",
+        points: 5,
+        epic: "  Board refresh  ",
+        labels: [" ui ", "ui", " desktop "],
+      }),
+    ).toEqual({
+      key: "STV-3",
+      type: "feature",
+      priority: "high",
+      points: 5,
+      epic: "Board refresh",
+      labels: ["ui", "desktop"],
+    });
   });
 });
 

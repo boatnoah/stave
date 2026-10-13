@@ -1,4 +1,5 @@
 export * from "./ids";
 export * from "./project";
 export * from "./team";
+export * from "./ticket";
 export * from "./workflow";

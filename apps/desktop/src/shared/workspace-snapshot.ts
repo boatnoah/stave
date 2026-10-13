@@ -1,4 +1,4 @@
-import type { ProjectBoardSettings } from "@stave/domain";
+import type { ProjectBoardSettings, TicketDetails } from "@stave/domain";
 
 export const desktopAgentRoles = ["tech_lead", "engineer", "qa"] as const;
 export type DesktopAgentRole = (typeof desktopAgentRoles)[number];
@@ -45,7 +45,7 @@ export type ExecutionState =
   | "waiting_capacity"
   | "waiting_user";
 export type RunMode = "simulation" | "codex";
-export interface TicketSnapshot {
+export interface TicketSnapshot extends TicketDetails {
   readonly id: string;
   readonly title: string;
   readonly description: string;
