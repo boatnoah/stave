@@ -20,7 +20,7 @@ const config: ForgeConfig = {
     asar: true,
     name: "Stave",
     executableName: "Stave",
-    icon: "assets/stave-mark",
+    icon: "assets/stave-app-icon",
     appBundleId: "com.boatnoah.stave",
     appCategoryType: "public.app-category.developer-tools",
     ...(APPLE_SIGNING_IDENTITY && {

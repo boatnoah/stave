@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>Stave app icon</title>
+  <rect width="128" height="128" rx="28" fill="#221f18" />
+  <rect x="42.7" y="24" width="64" height="18.7" rx="9.3" fill="#edecec" />
+  <rect x="21.3" y="54.7" width="85.4" height="18.6" rx="9.3" fill="#8fb8e8" />
+  <rect x="21.3" y="85.3" width="64" height="18.7" rx="9.3" fill="#edecec" />
+</svg>
