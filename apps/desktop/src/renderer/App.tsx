@@ -24,6 +24,7 @@ import type {
   WorkspaceSnapshot,
 } from "../shared/workspace-snapshot";
 import { AvatarLab } from "./AvatarLab";
+import { type ChatChannelId, ChatView } from "./ChatView";
 
 type WorkspaceState =
   | { readonly status: "loading" }
@@ -197,6 +198,11 @@ export function App() {
   const [selectedChatAgentId, setSelectedChatAgentId] = useState<string | null>(
     null,
   );
+  const [selectedChatTicketId, setSelectedChatTicketId] = useState<
+    string | null
+  >(null);
+  const [selectedChatChannel, setSelectedChatChannel] =
+    useState<ChatChannelId>("team");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [boardSettingsDraft, setBoardSettingsDraft] =
     useState<ProjectBoardSettings | null>(null);
@@ -367,6 +373,9 @@ export function App() {
   const selectedChatAgent = project?.agents.find(
     (agent) => agent.id === selectedChatAgentId,
   );
+  const selectedChatTicket = snapshot?.tickets.find(
+    (ticket) => ticket.id === selectedChatTicketId,
+  );
   const selectedRun = snapshot?.runs.find(
     (run) => run.id === selectedTicket?.runId,
   );
@@ -409,6 +418,8 @@ export function App() {
 
   function showChat() {
     setSelectedChatAgentId(null);
+    setSelectedChatTicketId(null);
+    setSelectedChatChannel("team");
     setView("chat");
     setSettingsOpen(false);
     setNeedsOpen(false);
@@ -417,6 +428,26 @@ export function App() {
 
   function showAgent(agentId: string) {
     setSelectedChatAgentId(agentId);
+    setSelectedChatTicketId(null);
+    setView("chat");
+    setSettingsOpen(false);
+    setNeedsOpen(false);
+    closeCommandMenu();
+  }
+
+  function showChatChannel(channel: ChatChannelId) {
+    setSelectedChatAgentId(null);
+    setSelectedChatTicketId(null);
+    setSelectedChatChannel(channel);
+    setView("chat");
+    setSettingsOpen(false);
+    setNeedsOpen(false);
+    closeCommandMenu();
+  }
+
+  function showTicketThread(ticketId: string) {
+    setSelectedChatAgentId(null);
+    setSelectedChatTicketId(ticketId);
     setView("chat");
     setSettingsOpen(false);
     setNeedsOpen(false);
@@ -690,42 +721,16 @@ export function App() {
                 </header>
               )}
               {view === "chat" ? (
-                <section
-                  className="chat-placeholder"
-                  aria-labelledby="chat-title"
-                >
-                  <div className="chat-placeholder__avatars" aria-hidden="true">
-                    {project.agents.map((agent) => (
-                      <AgentAvatar
-                        key={agent.id}
-                        agentId={agent.id}
-                        name={agent.displayName}
-                        avatarSeed={agent.avatarSeed}
-                        status="idle"
-                        size={38}
-                        decorative
-                      />
-                    ))}
-                  </div>
-                  <p className="eyebrow">
-                    {selectedChatAgent ? "Direct message" : "#team"}
-                  </p>
-                  <h2 id="chat-title">
-                    {selectedChatAgent?.displayName ?? "Team chat"}
-                  </h2>
-                  <p>
-                    {selectedChatAgent
-                      ? `Direct messages with ${selectedChatAgent.displayName} will appear here.`
-                      : "Channels, ticket threads, and agent updates will appear here."}
-                  </p>
-                  <button
-                    type="button"
-                    className="button button--quiet"
-                    onClick={() => setView("board")}
-                  >
-                    Return to board
-                  </button>
-                </section>
+                <ChatView
+                  snapshot={snapshot}
+                  agents={project.agents}
+                  channel={selectedChatChannel}
+                  ticketId={selectedChatTicket ? selectedChatTicket.id : null}
+                  agentId={selectedChatAgent ? selectedChatAgent.id : null}
+                  onSelectChannel={showChatChannel}
+                  onSelectTicket={showTicketThread}
+                  onSelectAgent={showAgent}
+                />
               ) : (
                 <section className="delivery" aria-labelledby="delivery-title">
                   <h2 id="delivery-title" className="visually-hidden">
@@ -1598,7 +1603,7 @@ export function App() {
               <button
                 type="button"
                 className="button button--small button--quiet"
-                onClick={showChat}
+                onClick={() => showTicketThread(selectedTicket.id)}
               >
                 Open in chat
               </button>

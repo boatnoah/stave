@@ -297,11 +297,26 @@ async function driveWorkflow() {
     await click("Close details");
     await wait("document.querySelector('.ticket-inspector') === null");
     await captureScreenshot(client, `${evidenceDirectory}/after.png`);
+    await click("Chat");
+    await wait(
+      "document.querySelector('#chat-heading')?.textContent.trim() === '#team'",
+    );
+    const chat = await evaluate(
+      client,
+      "document.querySelector('.chat-messages')?.textContent ?? ''",
+    );
+    assert.ok(chat.includes("Created ticket: Verify delivery workflow"));
+    assert.ok(chat.includes("Simulated qa passed"));
+    await captureScreenshot(client, `${evidenceDirectory}/chat.png`);
+    await click("STV-1");
+    await wait("document.querySelector('.chat-thread-summary') !== null");
+    await captureScreenshot(client, `${evidenceDirectory}/ticket-thread.png`);
     return {
       passed: true,
       feature: "project-ticket-simulated-workflow",
       pageUrl: page.url,
       ...observed,
+      chat: chat.slice(0, 500),
     };
   });
   await writeFile(
