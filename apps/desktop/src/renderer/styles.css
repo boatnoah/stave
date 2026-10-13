@@ -1340,6 +1340,7 @@ button:disabled {
   -webkit-app-region: drag;
 }
 
+.shell-titlebar__identity,
 .shell-tabs,
 .shell-titlebar__actions {
   align-items: stretch;
@@ -1347,7 +1348,28 @@ button:disabled {
   height: 100%;
 }
 
+.shell-titlebar__identity {
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.shell-brand__mark {
+  border-radius: 7px;
+  flex: 0 0 23px;
+  height: 23px;
+  width: 23px;
+}
+
+.shell-brand__name {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 750;
+  letter-spacing: -0.035em;
+}
+
 .shell-tabs {
+  align-items: stretch;
   gap: 2px;
 }
 

@@ -187,4 +187,5 @@ Each item ships as one pull request. `pnpm verify`, `pnpm e2e`, and real-app ver
 - Use Red Hat Mono beside Lato.
 - Use Classic cards.
 - Keep the needs-you swimlane off by default.
-- Do not ship a final logo or app icon until a direction is selected.
+- Use a three-lane mark with a Glacier route and center node to represent work moving across the delivery board.
+- Put the Stave wordmark beside the primary tabs and use the same mark for the macOS app icon.
