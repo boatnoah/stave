@@ -4,10 +4,26 @@ import {
   parseBoardSettingsRequest,
   parseCreateProjectRequest,
   parseCreateTicketRequest,
+  parseSendChatMessageRequest,
   parseWorkspaceSnapshot,
 } from "./ipc-contract";
 
 describe("IPC contract validation", () => {
+  it("validates chat channel context and message size", () => {
+    expect(
+      parseSendChatMessageRequest({ text: " hello ", channel: "team" }),
+    ).toEqual({
+      text: "hello",
+      channel: "team",
+    });
+    expect(() =>
+      parseSendChatMessageRequest({ text: "reply", channel: "ticket" }),
+    ).toThrow("need a ticket");
+    expect(() =>
+      parseSendChatMessageRequest({ text: "x".repeat(4001), channel: "team" }),
+    ).toThrow("too long");
+  });
+
   it("normalizes project creation at the boundary", () => {
     expect(
       parseCreateProjectRequest({ name: " Stave ", repositoryPath: " /repo " }),

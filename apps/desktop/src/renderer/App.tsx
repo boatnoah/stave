@@ -730,6 +730,24 @@ export function App() {
                   onSelectChannel={showChatChannel}
                   onSelectTicket={showTicketThread}
                   onSelectAgent={showAgent}
+                  onSendMessage={(text) =>
+                    command("chat-message", () =>
+                      window.stave.chat.send({
+                        text,
+                        channel: selectedChatTicketId
+                          ? "ticket"
+                          : selectedChatAgentId
+                            ? "direct"
+                            : selectedChatChannel,
+                        ...(selectedChatTicketId
+                          ? { ticketId: selectedChatTicketId }
+                          : {}),
+                        ...(selectedChatAgentId
+                          ? { agentId: selectedChatAgentId }
+                          : {}),
+                      }),
+                    )
+                  }
                 />
               ) : (
                 <section className="delivery" aria-labelledby="delivery-title">

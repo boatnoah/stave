@@ -27,6 +27,17 @@ export interface WorkspaceSnapshot {
   readonly tickets: readonly TicketSnapshot[];
   readonly activity: readonly ActivityEntry[];
   readonly runs: readonly RunSnapshot[];
+  readonly chatMessages: readonly ChatMessageSnapshot[];
+}
+
+interface ChatMessageSnapshot {
+  readonly id: string;
+  readonly author: "user";
+  readonly text: string;
+  readonly channel: "team" | "releases" | "ticket" | "direct";
+  readonly ticketId: string | null;
+  readonly agentId: string | null;
+  readonly createdAt: string;
 }
 
 export type WorkspaceEvent = {

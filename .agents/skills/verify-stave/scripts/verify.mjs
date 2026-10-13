@@ -82,10 +82,10 @@ async function evaluate(client, expression) {
   return result.result.value;
 }
 
-async function captureScreenshot(client, path) {
+async function captureScreenshot(client, path, captureBeyondViewport = true) {
   const result = await client.send("Page.captureScreenshot", {
     format: "png",
-    captureBeyondViewport: true,
+    captureBeyondViewport,
   });
   await writeFile(path, Buffer.from(result.data, "base64"));
 }
@@ -307,16 +307,51 @@ async function driveWorkflow() {
     );
     assert.ok(chat.includes("Created ticket: Verify delivery workflow"));
     assert.ok(chat.includes("Simulated qa passed"));
-    await captureScreenshot(client, `${evidenceDirectory}/chat.png`);
+    await fill("chat-message-input", "Real app message with @you");
+    await click("Send");
+    await wait(
+      "document.querySelector('.chat-messages')?.textContent.includes('Real app message with @you')",
+    );
+    await wait(
+      "(() => { const list = document.querySelector('.chat-messages'); return list && list.scrollHeight - list.clientHeight - list.scrollTop < 2; })()",
+    );
+    assert.ok(
+      await evaluate(
+        client,
+        "document.querySelector('.chat-messages .chat-mention--you')?.textContent === '@you'",
+      ),
+      "@you mention styling is missing",
+    );
+    await fill("chat-message-input", "/ticket Real app thread");
+    await click("Send");
+    await wait(
+      "[...document.querySelectorAll('.chat-sidebar__ticket')].some((button) => button.textContent.includes('STV-2'))",
+    );
+    await captureScreenshot(client, `${evidenceDirectory}/chat.png`, false);
     await click("STV-1");
     await wait("document.querySelector('.chat-thread-summary') !== null");
-    await captureScreenshot(client, `${evidenceDirectory}/ticket-thread.png`);
+    await fill("chat-message-input", "Reply from the real app");
+    await click("Send");
+    await wait(
+      "document.querySelector('.chat-messages')?.textContent.includes('Reply from the real app')",
+    );
+    await wait(
+      "(() => { const list = document.querySelector('.chat-messages'); return list && list.scrollHeight - list.clientHeight - list.scrollTop < 2; })()",
+    );
+    await captureScreenshot(
+      client,
+      `${evidenceDirectory}/ticket-thread.png`,
+      false,
+    );
     return {
       passed: true,
       feature: "project-ticket-simulated-workflow",
       pageUrl: page.url,
       ...observed,
       chat: chat.slice(0, 500),
+      userMessage: "Real app message with @you",
+      ticketCommand: "STV-2 Real app thread",
+      threadReply: "Reply from the real app",
     };
   });
   await writeFile(

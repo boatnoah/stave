@@ -1,4 +1,11 @@
 import { AgentAvatar } from "@stave/avatar";
+import {
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import type {
   AgentSnapshot,
   TicketSnapshot,
@@ -29,6 +36,7 @@ export function ChatView({
   onSelectChannel,
   onSelectTicket,
   onSelectAgent,
+  onSendMessage,
 }: {
   readonly snapshot: WorkspaceSnapshot;
   readonly agents: readonly AgentSnapshot[];
@@ -38,7 +46,11 @@ export function ChatView({
   readonly onSelectChannel: (channel: ChatChannelId) => void;
   readonly onSelectTicket: (ticketId: string) => void;
   readonly onSelectAgent: (agentId: string) => void;
+  readonly onSendMessage: (text: string) => Promise<void>;
 }) {
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
+  const messagesRef = useRef<HTMLOListElement>(null);
   const ticket = snapshot.tickets.find(
     (candidate) => candidate.id === ticketId,
   );
@@ -47,13 +59,42 @@ export function ChatView({
   const visibleMessages = messages.filter((message) => {
     if (ticketId) return message.ticketId === ticketId;
     if (agentId) return message.agentId === agentId;
+    if ("channel" in message && message.channel)
+      return message.channel === channel;
     if (channel === "releases")
       return isSuccessfulRelease(message, snapshot.runs);
     return true;
   });
+  const scrollKey = `${ticketId ?? agentId ?? channel}:${visibleMessages.at(-1)?.id ?? "empty"}`;
   const waitingTickets = snapshot.tickets.filter(
     (candidate) => candidate.execution === "waiting_user",
   );
+
+  useEffect(() => {
+    if (!scrollKey) return;
+    const list = messagesRef.current;
+    if (list) list.scrollTop = list.scrollHeight;
+  }, [scrollKey]);
+
+  async function send(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const text = draft.trim();
+    if (!text || sending) return;
+    setSending(true);
+    try {
+      await onSendMessage(text);
+      setDraft("");
+    } finally {
+      setSending(false);
+    }
+  }
+
+  function insert(token: string) {
+    setDraft(
+      (current) =>
+        `${current}${current && !current.endsWith(" ") ? " " : ""}${token} `,
+    );
+  }
 
   return (
     <section className="chat-workspace" aria-label="Team chat">
@@ -206,7 +247,7 @@ export function ChatView({
 
         {ticket && <TicketThreadSummary ticket={ticket} agents={agents} />}
 
-        <ol className="chat-messages" aria-live="polite">
+        <ol className="chat-messages" aria-live="polite" ref={messagesRef}>
           {visibleMessages.map((message, index) => {
             const previous = visibleMessages[index - 1];
             const grouped =
@@ -238,6 +279,70 @@ export function ChatView({
                   : "Activity and run updates will appear here."}
           </p>
         )}
+        <form className="chat-composer" onSubmit={(event) => void send(event)}>
+          <label className="visually-hidden" htmlFor="chat-message-input">
+            Message{" "}
+            {ticket ? ticket.key : agent ? agent.displayName : `#${channel}`}
+          </label>
+          <textarea
+            id="chat-message-input"
+            rows={2}
+            maxLength={4000}
+            placeholder={
+              ticket ? `Reply to ${ticket.key}` : `Message #${channel}`
+            }
+            value={draft}
+            onChange={(event) => setDraft(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
+          />
+          <div className="chat-composer__footer">
+            <div className="chat-composer__chips">
+              {agents.map((member) => (
+                <button
+                  key={member.id}
+                  type="button"
+                  onClick={() => insert(`@${member.displayName}`)}
+                >
+                  @{member.displayName}
+                </button>
+              ))}
+              <button type="button" onClick={() => insert("@you")}>
+                @you
+              </button>
+              <button type="button" onClick={() => insert("/run STV-1")}>
+                /run
+              </button>
+              <button type="button" onClick={() => insert("/ticket ")}>
+                /ticket
+              </button>
+              {snapshot.tickets.slice(0, 4).map((candidate) => (
+                <button
+                  key={candidate.id}
+                  type="button"
+                  onClick={() => insert(candidate.key)}
+                >
+                  {candidate.key}
+                </button>
+              ))}
+            </div>
+            <button
+              type="submit"
+              className="button button--small button--quiet"
+              disabled={!draft.trim() || sending}
+            >
+              {sending ? "Sending…" : "Send"}
+            </button>
+          </div>
+          <p className="chat-composer__hint">
+            Enter to send · Shift+Enter for a new line · /assign STV-1 Maya ·
+            /cancel STV-1
+          </p>
+        </form>
       </section>
     </section>
   );
@@ -329,7 +434,7 @@ function ChatMessageRow({
     return (
       <li className="chat-system-line">
         <span aria-hidden="true" />
-        <p>{message.text}</p>
+        <p>{renderChatText(message.text, agents)}</p>
         <MessageTime value={message.createdAt} />
       </li>
     );
@@ -365,7 +470,7 @@ function ChatMessageRow({
             <MessageTime value={message.createdAt} />
           </header>
         )}
-        <p>{message.text}</p>
+        <p>{renderChatText(message.text, agents)}</p>
         {ticket && ticketId && (
           <button
             type="button"
@@ -379,6 +484,29 @@ function ChatMessageRow({
       </div>
     </li>
   );
+}
+
+function renderChatText(text: string, agents: readonly AgentSnapshot[]) {
+  const names = agents.map((member) => member.displayName).join("|");
+  const matcher = new RegExp(`(@you|@(?:${names})\\b)`, "giu");
+  const output: ReactNode[] = [];
+  let cursor = 0;
+  for (const match of text.matchAll(matcher)) {
+    const offset = match.index ?? cursor;
+    const mention = match[0];
+    if (offset > cursor) output.push(text.slice(cursor, offset));
+    output.push(
+      <span
+        className={`chat-mention${/^@you$/iu.test(mention) ? " chat-mention--you" : ""}`}
+        key={`${offset}-${mention}`}
+      >
+        {mention}
+      </span>,
+    );
+    cursor = offset + mention.length;
+  }
+  if (cursor < text.length) output.push(text.slice(cursor));
+  return output;
 }
 
 function MessageTime({ value }: { readonly value: string }) {

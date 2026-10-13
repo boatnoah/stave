@@ -38,6 +38,12 @@ export interface StartRunRequest {
 export interface TicketRequest {
   readonly ticketId: string;
 }
+export interface SendChatMessageRequest {
+  readonly text: string;
+  readonly channel: "team" | "releases" | "ticket" | "direct";
+  readonly ticketId?: string;
+  readonly agentId?: string;
+}
 
 export interface StaveDesktopApi {
   readonly platform: NodeJS.Platform;
@@ -66,6 +72,11 @@ export interface StaveDesktopApi {
   readonly runs: {
     readonly start: (request: StartRunRequest) => Promise<WorkspaceSnapshot>;
     readonly cancel: (request: TicketRequest) => Promise<WorkspaceSnapshot>;
+  };
+  readonly chat: {
+    readonly send: (
+      request: SendChatMessageRequest,
+    ) => Promise<WorkspaceSnapshot>;
   };
   readonly events: {
     readonly subscribe: (

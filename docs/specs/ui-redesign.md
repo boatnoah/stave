@@ -118,7 +118,7 @@ Clicking a card opens a right inspector while the board remains visible. The ins
 
 Chat uses Lato. The earlier Recursive agent voice is not part of the product.
 
-Until messages can be sent, chat is read-only. The team channel shows project activity and run summaries, release shows successful QA runs, ticket threads show events for that ticket, and direct messages show run updates from that agent. A run summary appears once even though it is also recorded in activity.
+The team channel shows project activity, run summaries, and user messages. Releases shows successful QA runs, ticket threads show events and replies for that ticket, and direct messages show run updates and user replies for that agent. A run summary appears once even though it is also recorded in activity. User messages persist in the workspace snapshot.
 
 The sidebar sections appear in this order:
 
@@ -144,7 +144,7 @@ A system line is one quiet line with a stage-colored dot.
 
 The thread pane pins a ticket summary above the replies. The summary contains the key, stage, owner, title, and a three-segment grayscale stage bar. Done segments are light, the current segment is white, and future segments are dim.
 
-The composer contains the channel placeholder, chips for mentions, `/run`, `/ticket`, and ticket keys, plus an outlined Send button. A typing indicator appears above it. Supported slash commands are `/run`, `/ticket`, `/assign`, and `/cancel`.
+The composer contains the channel placeholder, mention chips, `/run`, `/ticket`, and ticket key chips, plus an outlined Send button. Enter sends and Shift+Enter adds a line. `@you` and agent mentions render in the message. Supported slash commands are `/run STV-1`, `/ticket title`, `/assign STV-1 Maya`, and `/cancel STV-1`. Messages in a ticket thread stay attached to that ticket; direct messages stay attached to the selected agent.
 
 ## Accessibility and motion
 
@@ -177,7 +177,7 @@ Each item ships as one pull request. `pnpm verify`, `pnpm e2e`, and real-app ver
 3. Add Focus lanes, Classic cards on current data, rails, WIP limits, and the ticket inspector.
 4. Add ticket key, type, priority, points, epic, and labels through the domain and persistence boundaries.
 5. Add read-only chat from existing activity and run events.
-6. Add user messages, mentions, slash commands, and thread replies.
+6. Add persistent user messages, mentions, slash commands, and thread replies.
 7. Add structured decisions and run resume.
 8. Add the final logo and app icon after a logo direction is selected.
 
