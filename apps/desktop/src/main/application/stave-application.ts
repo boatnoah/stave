@@ -1,5 +1,6 @@
 import { agentId, createProject, projectId } from "@stave/domain";
 import type {
+  BoardSettingsRequest,
   CreateProjectRequest,
   CreateTicketRequest,
   RepositoryRequest,
@@ -196,6 +197,16 @@ export class StaveApplication {
       },
       null,
       "Repository path updated",
+    );
+  }
+
+  setBoardSettings({ settings }: BoardSettingsRequest): WorkspaceSnapshot {
+    const project = this.#snapshot.project;
+    if (!project) throw new Error("Create a project first");
+    return this.#change(
+      { ...this.#snapshot, project: { ...project, boardSettings: settings } },
+      null,
+      "Board settings updated",
     );
   }
 

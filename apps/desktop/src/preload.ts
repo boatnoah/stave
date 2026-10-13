@@ -16,6 +16,10 @@ const desktopApi: StaveDesktopApi = Object.freeze({
       ),
   }),
   projects: Object.freeze<StaveDesktopApi["projects"]>({
+    setBoardSettings: async (request) =>
+      parseWorkspaceSnapshot(
+        await ipcRenderer.invoke(ipcChannels.setBoardSettings, request),
+      ),
     setRepository: async (request) =>
       parseWorkspaceSnapshot(
         await ipcRenderer.invoke(ipcChannels.setRepository, request),

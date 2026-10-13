@@ -1,4 +1,9 @@
+import {
+  defaultProjectBoardSettings,
+  type ProjectBoardSettings,
+} from "@stave/domain";
 import type {
+  BoardSettingsRequest,
   CreateProjectRequest,
   CreateTicketRequest,
   StartRunRequest,
@@ -18,6 +23,7 @@ export const ipcChannels = {
   getWorkspaceSnapshot: "stave:workspace:get-snapshot",
   createProject: "stave:projects:create",
   setRepository: "stave:projects:set-repository",
+  setBoardSettings: "stave:projects:set-board-settings",
   prepareWorkspace: "stave:workspaces:prepare",
   createTicket: "stave:tickets:create",
   startRun: "stave:runs:start",
@@ -115,7 +121,44 @@ export function parseWorkspaceSnapshot(value: unknown): WorkspaceSnapshot {
       teamTemplateId: requireString(project.teamTemplateId, "Team template id"),
       teamTemplateVersion: Number(project.teamTemplateVersion),
       agents,
+      boardSettings:
+        project.boardSettings === undefined
+          ? defaultProjectBoardSettings
+          : parseProjectBoardSettings(project.boardSettings),
     },
+  };
+}
+
+function parseProjectBoardSettings(value: unknown): ProjectBoardSettings {
+  const settings = requireRecord(value, "Board settings");
+  const limits = requireRecord(settings.wipLimits, "WIP limits");
+  const readLimit = (value: unknown, label: string) => {
+    if (!Number.isSafeInteger(value) || Number(value) < 1 || Number(value) > 20)
+      throw new Error(`${label} must be an integer from 1 to 20`);
+    return Number(value);
+  };
+  if (typeof settings.showNeedsLane !== "boolean")
+    throw new Error("Needs-you lane setting must be a boolean");
+  return {
+    wipLimits: {
+      implementation: readLimit(
+        limits.implementation,
+        "Implementation WIP limit",
+      ),
+      review: readLimit(limits.review, "Review WIP limit"),
+      qa: readLimit(limits.qa, "QA WIP limit"),
+    },
+    showNeedsLane: settings.showNeedsLane,
+  };
+}
+
+export function parseBoardSettingsRequest(
+  value: unknown,
+): BoardSettingsRequest {
+  return {
+    settings: parseProjectBoardSettings(
+      requireRecord(value, "Board settings request").settings,
+    ),
   };
 }
 

@@ -1,3 +1,5 @@
+import type { ProjectBoardSettings } from "@stave/domain";
+
 export const desktopAgentRoles = ["tech_lead", "engineer", "qa"] as const;
 export type DesktopAgentRole = (typeof desktopAgentRoles)[number];
 
@@ -16,6 +18,7 @@ interface ProjectSnapshot {
   readonly teamTemplateId: string;
   readonly teamTemplateVersion: number;
   readonly agents: readonly AgentSnapshot[];
+  readonly boardSettings: ProjectBoardSettings;
 }
 
 export interface WorkspaceSnapshot {
