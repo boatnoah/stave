@@ -7,6 +7,12 @@ function input(overrides: Partial<StageInput> = {}): StageInput {
   return {
     ticket: {
       id: "t1",
+      key: "STV-1",
+      type: "feature",
+      priority: "medium",
+      points: null,
+      epic: null,
+      labels: [],
       title: "Add dark mode",
       description: "Follow the system theme.",
       stage: "implementation",

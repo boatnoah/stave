@@ -13,6 +13,30 @@ function setup(runner?: StageRunner) {
   return { app, ticket };
 }
 describe("StaveApplication", () => {
+  it("assigns sequential keys and retains ticket metadata", () => {
+    const { app, ticket: firstTicket } = setup();
+    const snapshot = app.createTicket({
+      title: "Fix keyboard navigation",
+      description: "",
+      type: "bug",
+      priority: "urgent",
+      points: 3,
+      epic: "Board refresh",
+      labels: ["accessibility", "keyboard"],
+    });
+
+    expect(firstTicket.key).toBe("STV-1");
+    expect(snapshot.tickets[1]).toMatchObject({
+      key: "STV-2",
+      type: "bug",
+      priority: "urgent",
+      points: 3,
+      epic: "Board refresh",
+      labels: ["accessibility", "keyboard"],
+    });
+    expect(parseWorkspaceSnapshot(snapshot)).toEqual(snapshot);
+  });
+
   it("persists project board settings in the workspace snapshot", () => {
     const { app } = setup();
     const snapshot = app.setBoardSettings({

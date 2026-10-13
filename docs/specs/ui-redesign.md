@@ -156,6 +156,8 @@ The composer contains the channel placeholder, chips for mentions, `/run`, `/tic
 
 Tickets gain a per-project sequential key, type, priority, points, epic, and optional labels. The domain, snapshot, IPC parsers, and SQLite store own these fields. Older snapshots receive defaults.
 
+Ticket keys use the `STV-<sequence>` format. New tickets default to Task and Medium priority, with no points, epic, or labels. Points are optional integers from 1 to 100, and a ticket can have up to eight unique labels.
+
 The board stores per-column WIP limits.
 
 Chat stores channels, ticket threads, direct conversations, and messages from agents, the user, and the system. Agents can post messages and handoffs.

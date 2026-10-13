@@ -218,7 +218,7 @@ async function driveWorkflow() {
     const click = async (text) => {
       const clicked = await evaluate(
         client,
-        `(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(${JSON.stringify(text)}) || b.getAttribute('aria-label') === ${JSON.stringify(text)}); if (!b || b.disabled) return false; b.click(); return true; })()`,
+        `(() => { const b = [...document.querySelectorAll('button')].find(b => b.textContent.trim().startsWith(${JSON.stringify(text)}) || b.getAttribute('aria-label') === ${JSON.stringify(text)}); if (!b || b.disabled) return false; b.scrollIntoView({block:'nearest',inline:'nearest'}); b.click(); return true; })()`,
       );
       assert.ok(clicked, `Enabled ${text} control not found`);
     };
@@ -244,6 +244,7 @@ async function driveWorkflow() {
     await click("Add ticket");
     await fill("ticket-title", "Verify delivery workflow");
     await fill("ticket-description", "Pass implementation, review, and QA.");
+    await captureScreenshot(client, `${evidenceDirectory}/ticket-form.png`);
     await click("Create ticket");
     await wait("document.querySelectorAll('.work-ticket').length === 1");
     await click("Run simulation");
@@ -264,7 +265,7 @@ async function driveWorkflow() {
     );
     await evaluate(
       client,
-      "document.querySelector('.board-column--done .work-ticket__title').click()",
+      "(() => { const button = document.querySelector('.board-column--done .work-ticket__title'); button.scrollIntoView({block:'nearest',inline:'nearest'}); button.click(); })()",
     );
     await wait("document.querySelector('.ticket-inspector') !== null");
     const observed = await evaluate(
@@ -273,6 +274,9 @@ async function driveWorkflow() {
         tabs: [...document.querySelectorAll('.shell-tabs button')].map((element) => element.textContent.trim()),
         done: document.querySelectorAll('.board-column--done .work-ticket').length,
         inspector: document.querySelector('.ticket-inspector') !== null,
+        key: document.querySelector('.ticket-inspector__identity code')?.textContent,
+        type: document.querySelector('.ticket-metadata > div:first-child dd')?.textContent,
+        priority: document.querySelector('.ticket-metadata > div:nth-child(2) dd')?.textContent,
         activity: document.querySelector('.ticket-activity').textContent,
         output: document.querySelector('.run-output').textContent
       })`,
@@ -282,6 +286,13 @@ async function driveWorkflow() {
     assert.ok(observed.activity.includes("Simulation canceled"));
     assert.ok(observed.output.includes("Simulated qa passed"));
     assert.equal(observed.inspector, true);
+    assert.equal(observed.key, "STV-1");
+    assert.equal(observed.type, "Task");
+    assert.equal(observed.priority, "Medium");
+    await evaluate(
+      client,
+      "document.querySelector('.delivery-board').scrollLeft = document.querySelector('.delivery-board').scrollWidth",
+    );
     await captureScreenshot(client, `${evidenceDirectory}/inspector.png`);
     await click("Close details");
     await wait("document.querySelector('.ticket-inspector') === null");

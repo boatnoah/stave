@@ -1,4 +1,8 @@
-import type { ProjectBoardSettings } from "@stave/domain";
+import type {
+  ProjectBoardSettings,
+  TicketPriority,
+  TicketType,
+} from "@stave/domain";
 import type {
   RunMode,
   WorkspaceEvent,
@@ -21,6 +25,11 @@ export interface BoardSettingsRequest {
 export interface CreateTicketRequest {
   readonly title: string;
   readonly description: string;
+  readonly type?: TicketType;
+  readonly priority?: TicketPriority;
+  readonly points?: number | null;
+  readonly epic?: string | null;
+  readonly labels?: readonly string[];
 }
 export interface StartRunRequest {
   readonly ticketId: string;

@@ -1,6 +1,14 @@
 import {
+  createTicketKey,
   defaultProjectBoardSettings,
+  defaultTicketPriority,
+  defaultTicketType,
   type ProjectBoardSettings,
+  type TicketDetails,
+  type TicketPriority,
+  type TicketType,
+  ticketPriorities,
+  ticketTypes,
 } from "@stave/domain";
 import type {
   BoardSettingsRequest,
@@ -182,7 +190,11 @@ export function parseCreateTicketRequest(value: unknown): CreateTicketRequest {
     record.description.length > 50_000
   )
     throw new Error("Invalid description");
-  return { title, description: record.description.trim() };
+  return {
+    title,
+    description: record.description.trim(),
+    ...parseTicketMetadata(record),
+  };
 }
 export function parseTicketRequest(value: unknown): TicketRequest {
   return {
@@ -242,7 +254,7 @@ function parseWork(
   snapshot: Record<string, unknown>,
 ): Pick<WorkspaceSnapshot, "tickets" | "activity" | "runs"> {
   return {
-    tickets: records(snapshot.tickets, "Tickets").map((ticket) => {
+    tickets: records(snapshot.tickets, "Tickets").map((ticket, index) => {
       const workspace =
         ticket.workspace === null
           ? null
@@ -250,6 +262,7 @@ function parseWork(
       if (workspace && typeof workspace.dirty !== "boolean")
         throw new Error("Invalid workspace dirty status");
       return {
+        ...parseTicketDetails(ticket, index + 1),
         id: requireString(ticket.id, "Ticket id"),
         title: requireString(ticket.title, "Title"),
         description: requireText(ticket.description, "Description"),
@@ -289,6 +302,95 @@ function parseWork(
       };
     }),
   };
+}
+
+function parseTicketDetails(ticket: Record<string, unknown>, sequence: number) {
+  return {
+    key:
+      ticket.key === undefined
+        ? createTicketKey(sequence)
+        : parseTicketKey(ticket.key),
+    ...parseTicketMetadata(ticket),
+  };
+}
+
+function parseTicketKey(value: unknown): string {
+  const key = requireString(value, "Ticket key");
+  const match = /^STV-([1-9]\d*)$/u.exec(key);
+  if (!match || !Number.isSafeInteger(Number(match[1])))
+    throw new Error("Invalid ticket key");
+  return key;
+}
+
+function parseTicketMetadata(
+  ticket: Record<string, unknown>,
+): Omit<TicketDetails, "key"> {
+  const type =
+    ticket.type === undefined
+      ? defaultTicketType
+      : parseTicketType(ticket.type);
+  const priority =
+    ticket.priority === undefined
+      ? defaultTicketPriority
+      : parseTicketPriority(ticket.priority);
+  const points =
+    ticket.points === undefined || ticket.points === null
+      ? null
+      : parseTicketPoints(ticket.points);
+  const epic =
+    ticket.epic === undefined || ticket.epic === null
+      ? null
+      : parseEpic(ticket.epic);
+  const labels = ticket.labels === undefined ? [] : parseLabels(ticket.labels);
+  return {
+    type,
+    priority,
+    points,
+    epic,
+    labels,
+  };
+}
+
+function parseTicketType(value: unknown): TicketType {
+  if (typeof value === "string" && ticketTypes.includes(value as TicketType))
+    return value as TicketType;
+  throw new Error("Unsupported ticket type");
+}
+
+function parseTicketPriority(value: unknown): TicketPriority {
+  if (
+    typeof value === "string" &&
+    ticketPriorities.includes(value as TicketPriority)
+  )
+    return value as TicketPriority;
+  throw new Error("Unsupported ticket priority");
+}
+
+function parseTicketPoints(value: unknown): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 1 || Number(value) > 100)
+    throw new Error("Ticket points must be an integer from 1 to 100");
+  return Number(value);
+}
+
+function parseEpic(value: unknown): string {
+  const epic = requireString(value, "Epic");
+  if (epic.length > 120) throw new Error("Epic is too long");
+  return epic;
+}
+
+function parseLabels(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.length > 8)
+    throw new Error("Ticket labels must be an array of up to 8 labels");
+  const labels = value.map((candidate) => {
+    const label = requireString(candidate, "Ticket label");
+    if (label.length > 32) throw new Error("Ticket label is too long");
+    return label;
+  });
+  if (
+    new Set(labels.map((label) => label.toLowerCase())).size !== labels.length
+  )
+    throw new Error("Ticket labels must be unique");
+  return labels;
 }
 
 export function parseRepositoryRequest(value: unknown): {

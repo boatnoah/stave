@@ -82,8 +82,17 @@ test("runs a simulated ticket to done and restores it after restart", async () =
 
   await page.keyboard.press("c");
   await page.locator("#ticket-title").fill("Prove the board works");
+  await page.locator("#ticket-type").selectOption("feature");
+  await page.locator("#ticket-priority").selectOption("high");
+  await page.locator("#ticket-points").fill("5");
+  await page.locator("#ticket-epic").fill("Board refresh");
+  await page.locator("#ticket-labels").fill("ui, accessibility");
   await page.getByRole("button", { name: "Create ticket" }).click();
   await expect(page.locator(".work-ticket")).toHaveCount(1);
+  await expect(page.locator(".work-ticket__identity code")).toHaveText("STV-1");
+  await expect(page.locator(".work-ticket__epic")).toHaveText("Board refresh");
+  await expect(page.locator(".work-ticket__details")).toContainText("5 pts");
+  await expect(page.locator(".work-ticket__details")).toContainText("High");
 
   await page.getByRole("button", { name: "Run simulation" }).first().click();
   await expect(
@@ -97,6 +106,14 @@ test("runs a simulated ticket to done and restores it after restart", async () =
   await page
     .getByRole("button", { name: "View details: Prove the board works" })
     .click();
+  await expect(page.locator(".ticket-inspector__identity code")).toHaveText(
+    "STV-1",
+  );
+  await expect(page.locator(".ticket-metadata")).toContainText("Feature");
+  await expect(page.locator(".ticket-metadata")).toContainText("Board refresh");
+  await expect(page.locator(".ticket-metadata__labels")).toContainText(
+    "accessibility",
+  );
   await expect(page.locator(".run-output")).toContainText(
     "Simulated qa passed",
   );
@@ -107,6 +124,9 @@ test("runs a simulated ticket to done and restores it after restart", async () =
   await expect(
     second.page.locator(".board-column--done .work-ticket"),
   ).toContainText("Prove the board works");
+  await expect(
+    second.page.locator(".board-column--done .work-ticket__identity code"),
+  ).toHaveText("STV-1");
   await second.page.getByRole("button", { name: "Open settings" }).click();
   await expect(
     second.page.getByRole("spinbutton", { name: "Building" }),

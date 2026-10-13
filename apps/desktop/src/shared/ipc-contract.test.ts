@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   parseBoardSettingsRequest,
   parseCreateProjectRequest,
+  parseCreateTicketRequest,
   parseWorkspaceSnapshot,
 } from "./ipc-contract";
 
@@ -51,7 +52,19 @@ describe("IPC contract validation", () => {
         teamTemplateVersion: 1,
         agents: [],
       },
-      tickets: [],
+      tickets: [
+        {
+          id: "ticket-1",
+          title: "Old ticket",
+          description: "",
+          stage: "todo",
+          execution: "ready",
+          assignedAgentId: null,
+          runId: null,
+          output: "",
+          workspace: null,
+        },
+      ],
       activity: [],
       runs: [],
     });
@@ -60,6 +73,89 @@ describe("IPC contract validation", () => {
       wipLimits: { implementation: 2, review: 1, qa: 2 },
       showNeedsLane: false,
     });
+    expect(snapshot.tickets[0]).toMatchObject({
+      key: "STV-1",
+      type: "task",
+      priority: "medium",
+      points: null,
+      epic: null,
+      labels: [],
+      mode: "simulation",
+    });
+  });
+
+  it("validates and normalizes ticket metadata at the IPC boundary", () => {
+    expect(
+      parseCreateTicketRequest({
+        title: " Fix keyboard navigation ",
+        description: "",
+        type: "bug",
+        priority: "urgent",
+        points: 3,
+        epic: " Board refresh ",
+        labels: ["accessibility", "keyboard"],
+      }),
+    ).toEqual({
+      title: "Fix keyboard navigation",
+      description: "",
+      type: "bug",
+      priority: "urgent",
+      points: 3,
+      epic: "Board refresh",
+      labels: ["accessibility", "keyboard"],
+    });
+    expect(() =>
+      parseCreateTicketRequest({
+        title: "Ticket",
+        description: "",
+        type: "unknown",
+      }),
+    ).toThrow("Unsupported ticket type");
+    expect(() =>
+      parseCreateTicketRequest({
+        title: "Ticket",
+        description: "",
+        points: 0,
+      }),
+    ).toThrow("integer from 1 to 100");
+    expect(() =>
+      parseCreateTicketRequest({
+        title: "Ticket",
+        description: "",
+        labels: ["UI", "ui"],
+      }),
+    ).toThrow("must be unique");
+  });
+
+  it("rejects persisted tickets with invalid keys", () => {
+    expect(() =>
+      parseWorkspaceSnapshot({
+        revision: 0,
+        project: null,
+        tickets: [
+          {
+            id: "ticket-1",
+            key: "OTHER-1",
+            title: "Ticket",
+            description: "",
+            stage: "todo",
+            execution: "ready",
+            mode: "simulation",
+            assignedAgentId: null,
+            runId: null,
+            output: "",
+            workspace: null,
+            type: "task",
+            priority: "medium",
+            points: null,
+            epic: null,
+            labels: [],
+          },
+        ],
+        activity: [],
+        runs: [],
+      }),
+    ).toThrow("Invalid ticket key");
   });
 
   it("validates board settings at the IPC boundary", () => {
