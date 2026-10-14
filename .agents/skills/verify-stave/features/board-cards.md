@@ -1,6 +1,6 @@
 # Board-size task cards
 
-The compact board study proves avatars and execution state remain legible in ticket-card constraints.
+The compact board study inside Avatar Lab proves avatars and execution state remain legible in ticket-card constraints. It is separate from the persisted delivery board.
 
 ## Sub-features
 
@@ -12,11 +12,11 @@ The compact board study proves avatars and execution state remain legible in tic
 
 ## How to get to it (user POV)
 
-Launch Stave and scroll to `Quiet at 28 pixels`. Four task cards appear beneath that heading.
+In the Board view, open Settings, choose **Avatar lab**, then **Open lab**. Scroll to `Quiet at 28 pixels`. Four task cards appear beneath that heading.
 
 ## Driving it with CDP
 
-Query `.task-card` elements. Assert there are four cards and that each contains two metadata values, a non-empty title, an assigned agent name, one decorative compact avatar, and a state label. Capture the section at desktop width. For responsive work, resize the CDP viewport and capture the same section at the affected width.
+Run `verify.mjs drive-avatar-study`. It asserts four cards, two metadata values per card, a title, assigned agent name, decorative avatar, and state label; it also checks the four-, two-, and one-column layouts at 1280, 800, and 500 pixels and captures each view.
 
 ## Gotchas
 

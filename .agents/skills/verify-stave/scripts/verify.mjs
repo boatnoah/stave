@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import assert from "node:assert/strict";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import process from "node:process";
 
 const [, , command, portValue, evidenceDirectory] = process.argv;
@@ -9,7 +9,7 @@ const port = Number(portValue);
 
 if (!command || !Number.isInteger(port) || port < 1024 || port > 65535) {
   console.error(
-    "usage: verify.mjs <doctor|drive-state-preview> <port> [evidence-dir]",
+    "usage: verify.mjs <doctor|drive-avatar-study|drive-boot-screen|drive-state-preview|drive-workflow|drive-decision|drive-git|verify-restored> <port> [evidence-dir]",
   );
   process.exit(64);
 }
@@ -129,6 +129,239 @@ async function doctor() {
   console.log(JSON.stringify(result, null, 2));
 }
 
+async function driveAvatarStudy() {
+  assert.ok(
+    evidenceDirectory,
+    "drive-avatar-study requires an evidence directory",
+  );
+  await mkdir(evidenceDirectory, { recursive: true });
+
+  const result = await withStaveClient(async (client, page) => {
+    await evaluate(
+      client,
+      `(() => {
+        document.querySelector('button[aria-label="Open settings"]')?.click();
+        [...document.querySelectorAll('button')]
+          .find((button) => button.textContent.trim() === 'Open lab')?.click();
+      })()`,
+    );
+    for (let attempt = 0; attempt < 50; attempt++) {
+      if (
+        await evaluate(
+          client,
+          "document.querySelector('.agent-study') !== null",
+        )
+      )
+        break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
+
+    const crew = await evaluate(
+      client,
+      `(() => [...document.querySelectorAll('.agent-study')].map((card) => ({
+        name: card.querySelector('h2')?.textContent?.trim() ?? '',
+        role: card.querySelector('.agent-study__identity p')?.textContent?.trim() ?? '',
+        state: card.querySelector('.state-label')?.textContent?.trim() ?? '',
+        activity: card.querySelector('.agent-study__activity')?.textContent?.trim() ?? '',
+        avatarLabel: card.querySelector('.agent-avatar svg[role="img"]')?.getAttribute('aria-label') ?? ''
+      })))()`,
+    );
+    assert.equal(crew.length, 10, "expected ten visible crew cards");
+    assert.equal(
+      new Set(crew.map((agent) => agent.name)).size,
+      10,
+      "agent names must be unique",
+    );
+    assert.ok(
+      crew.every(
+        (agent) =>
+          agent.name &&
+          agent.role &&
+          agent.state &&
+          agent.activity &&
+          agent.avatarLabel,
+      ),
+      "each crew card must expose identity, role, state, activity, and an accessible avatar",
+    );
+    await captureScreenshot(client, `${evidenceDirectory}/crew.png`);
+
+    const cards = await evaluate(
+      client,
+      `(() => [...document.querySelectorAll('.task-card')].map((card) => ({
+        metadata: [...card.querySelectorAll('.task-card__meta span')].map((node) => node.textContent?.trim() ?? ''),
+        title: card.querySelector('h3')?.textContent?.trim() ?? '',
+        agent: card.querySelector('.task-card__agent > span:last-child')?.textContent?.trim() ?? '',
+        decorative: card.querySelector('.task-card__agent .agent-avatar')?.getAttribute('aria-hidden') === 'true',
+        state: card.querySelector('.task-card__footer > span:last-child')?.textContent?.trim() ?? ''
+      })))()`,
+    );
+    assert.equal(cards.length, 4, "expected four compact board study cards");
+    assert.ok(
+      cards.every(
+        (card) =>
+          card.metadata.length === 2 &&
+          card.metadata.every(Boolean) &&
+          card.title &&
+          card.agent &&
+          card.decorative &&
+          card.state,
+      ),
+      `each compact card must retain its metadata, title, agent, decorative avatar, and state: ${JSON.stringify(cards)}`,
+    );
+
+    const layouts = [];
+    for (const width of [1280, 800, 500]) {
+      await client.send("Emulation.setDeviceMetricsOverride", {
+        width,
+        height: 1000,
+        deviceScaleFactor: 1,
+        mobile: false,
+      });
+      const columns = await evaluate(
+        client,
+        "getComputedStyle(document.querySelector('.mini-board')).gridTemplateColumns.split(' ').length",
+      );
+      const expected = width > 900 ? 4 : width > 560 ? 2 : 1;
+      assert.equal(
+        columns,
+        expected,
+        `expected ${expected} compact card columns at ${width}px`,
+      );
+      layouts.push({ width, columns });
+      await captureScreenshot(
+        client,
+        `${evidenceDirectory}/cards-${width}.png`,
+      );
+    }
+    await client.send("Emulation.clearDeviceMetricsOverride");
+    return {
+      passed: true,
+      feature: "living-crew-and-board-size-cards",
+      pageUrl: page.url,
+      crew,
+      cards,
+      layouts,
+    };
+  });
+
+  await writeFile(
+    `${evidenceDirectory}/result.json`,
+    `${JSON.stringify(result, null, 2)}\n`,
+  );
+  console.log(JSON.stringify(result, null, 2));
+}
+
+async function driveBootScreen() {
+  assert.ok(
+    evidenceDirectory,
+    "drive-boot-screen requires an evidence directory",
+  );
+  await mkdir(evidenceDirectory, { recursive: true });
+
+  const page = await getStavePage();
+  const client = new CdpClient(page.webSocketDebuggerUrl);
+  await client.open();
+  await client.send("Page.enable");
+  await client.send("Runtime.enable");
+  try {
+    const health = await evaluate(
+      client,
+      `(() => ({ title: document.title }))()`,
+    );
+    assert.equal(health.title, "Stave");
+    await client.send("Emulation.setCPUThrottlingRate", { rate: 20 });
+    let visible = false;
+    let state = null;
+    for (let attempt = 0; attempt < 200; attempt++) {
+      try {
+        await client.send("Runtime.enable");
+        state = await evaluate(
+          client,
+          `(() => ({
+            visible: document.querySelector('.boot-screen') !== null,
+            surface: document.querySelector('.shell-content') !== null,
+            covered: document.querySelector('.shell-content')?.classList.contains('boot-covered') ?? false,
+            loading: document.querySelector('.workspace-status')?.textContent?.trim() ?? null
+          }))()`,
+        );
+        visible = state.visible;
+        if (visible || (state.surface && !state.covered && !state.loading))
+          break;
+      } catch {
+        // Chromium can briefly drop the execution context while the real renderer reloads.
+      }
+      await new Promise((resolve) => setTimeout(resolve, 25));
+    }
+    await client.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    if (!visible) {
+      await captureScreenshot(client, `${evidenceDirectory}/fast-open.png`);
+      const result = {
+        passed: true,
+        feature: "delayed-workspace-boot-screen",
+        verification: "verified-unreachable",
+        prerequisite:
+          "workspace snapshot loading must exceed the 300 ms display delay",
+        attempted:
+          "fresh isolated Stave launch with a 20x CPU throttle while observing the real workspace load",
+        observation: state,
+        pageUrl: page.url,
+      };
+      await writeFile(
+        `${evidenceDirectory}/result.json`,
+        `${JSON.stringify(result, null, 2)}\n`,
+      );
+      console.log(JSON.stringify(result, null, 2));
+      return;
+    }
+    const opening = await evaluate(
+      client,
+      `(() => ({
+        label: document.querySelector('.boot-screen')?.getAttribute('aria-label') ?? null,
+        title: document.querySelector('.boot-screen')?.getAttribute('role') ?? null,
+        mark: document.querySelector('.boot-screen__mark') !== null,
+        shellCovered: document.querySelector('.shell-content')?.classList.contains('boot-covered') ?? false
+      }))()`,
+    );
+    assert.deepEqual(opening, {
+      label: "Opening Stave",
+      title: "status",
+      mark: true,
+      shellCovered: true,
+    });
+    await captureScreenshot(client, `${evidenceDirectory}/opening.png`);
+    await client.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    let revealed = false;
+    for (let attempt = 0; attempt < 100; attempt++) {
+      revealed = await evaluate(
+        client,
+        "document.querySelector('.boot-screen') === null && document.querySelector('.shell-content')?.classList.contains('boot-covered') === false",
+      );
+      if (revealed) break;
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    assert.ok(
+      revealed,
+      "the boot overlay did not reveal the workspace after loading",
+    );
+    await captureScreenshot(client, `${evidenceDirectory}/revealed.png`);
+    const result = {
+      passed: true,
+      feature: "delayed-workspace-boot-screen",
+      verification: "observed",
+      pageUrl: page.url,
+      opening,
+      revealed,
+    };
+    await writeFile(
+      `${evidenceDirectory}/result.json`,
+      `${JSON.stringify(result, null, 2)}\n`,
+    );
+    console.log(JSON.stringify(result, null, 2));
+  } finally {
+    client.close();
+  }
+}
+
 async function driveStatePreview() {
   assert.ok(
     evidenceDirectory,
@@ -194,6 +427,55 @@ async function driveStatePreview() {
     );
 
     await captureScreenshot(client, `${evidenceDirectory}/after.png`);
+    await client.send("Emulation.setEmulatedMedia", {
+      features: [{ name: "prefers-reduced-motion", value: "reduce" }],
+    });
+    await evaluate(
+      client,
+      `(() => [...document.querySelectorAll('.state-picker button')]
+        .find((button) => button.textContent.trim() === 'Done')?.click())()`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    const reducedMotion = await evaluate(
+      client,
+      `(() => ({
+        selected: document.querySelector('.state-picker .is-active')?.textContent?.trim() ?? null,
+        labels: [...document.querySelectorAll('.state-label')].map((node) => node.textContent?.trim()),
+        animation: getComputedStyle(document.querySelector('.agent-avatar__presence')).animationName
+      }))()`,
+    );
+    assert.equal(reducedMotion.selected, "Done");
+    assert.equal(reducedMotion.labels.length, 10);
+    assert.ok(reducedMotion.labels.every((label) => label === "Done"));
+    assert.equal(reducedMotion.animation, "none");
+    await captureScreenshot(client, `${evidenceDirectory}/reduced-motion.png`);
+    await client.send("Emulation.setEmulatedMedia", { features: [] });
+    await evaluate(
+      client,
+      `(() => [...document.querySelectorAll('.state-picker button')]
+        .find((button) => button.textContent.trim() === 'Live mix')?.click())()`,
+    );
+    const restored = await evaluate(
+      client,
+      `(() => ({
+        selected: document.querySelector('.state-picker .is-active')?.textContent?.trim() ?? null,
+        labels: [...document.querySelectorAll('.state-label')].map((node) => node.textContent?.trim())
+      }))()`,
+    );
+    assert.equal(restored.selected, "Live mix");
+    assert.deepEqual(restored.labels, [
+      "Working",
+      "Reviewing",
+      "Reviewing",
+      "Waiting",
+      "Idle",
+      "Done",
+      "Blocked",
+      "Queued",
+      "Failed",
+      "Working",
+    ]);
+    await captureScreenshot(client, `${evidenceDirectory}/live-mix.png`);
     return {
       passed: true,
       feature: "avatar-state-preview",
@@ -201,6 +483,8 @@ async function driveStatePreview() {
       action,
       before,
       after,
+      reducedMotion,
+      restored,
     };
   });
 
@@ -228,6 +512,12 @@ async function driveWorkflow() {
         `(() => {const e=document.getElementById(${JSON.stringify(id)}); if(!e) throw Error('Missing input'); const p=e.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype; Object.getOwnPropertyDescriptor(p,'value').set.call(e,${JSON.stringify(value)}); e.dispatchEvent(new Event('input',{bubbles:true})); })()`,
       );
     };
+    const select = async (id, value) => {
+      await evaluate(
+        client,
+        `(() => {const e=document.getElementById(${JSON.stringify(id)});if(!e)throw Error('Missing select');Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype,'value').set.call(e,${JSON.stringify(value)});e.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+      );
+    };
     const wait = async (expression) => {
       for (let i = 0; i < 100; i++) {
         if (await evaluate(client, expression)) return;
@@ -244,6 +534,11 @@ async function driveWorkflow() {
     await click("Add ticket");
     await fill("ticket-title", "Verify delivery workflow");
     await fill("ticket-description", "Pass implementation, review, and QA.");
+    await select("ticket-type", "bug");
+    await select("ticket-priority", "urgent");
+    await fill("ticket-points", "5");
+    await fill("ticket-epic", "Boot screen");
+    await fill("ticket-labels", "ui, verification");
     await captureScreenshot(client, `${evidenceDirectory}/ticket-form.png`);
     await click("Create ticket");
     await wait("document.querySelectorAll('.work-ticket').length === 1");
@@ -277,6 +572,9 @@ async function driveWorkflow() {
         key: document.querySelector('.ticket-inspector__identity code')?.textContent,
         type: document.querySelector('.ticket-metadata > div:first-child dd')?.textContent,
         priority: document.querySelector('.ticket-metadata > div:nth-child(2) dd')?.textContent,
+        points: document.querySelector('.ticket-metadata > div:nth-child(3) dd')?.textContent,
+        epic: document.querySelector('.ticket-metadata > div:nth-child(4) dd')?.textContent,
+        labels: document.querySelector('.ticket-metadata__labels')?.textContent,
         activity: document.querySelector('.ticket-activity').textContent,
         output: document.querySelector('.run-output').textContent
       })`,
@@ -287,8 +585,11 @@ async function driveWorkflow() {
     assert.ok(observed.output.includes("Simulated qa passed"));
     assert.equal(observed.inspector, true);
     assert.equal(observed.key, "STV-1");
-    assert.equal(observed.type, "Task");
-    assert.equal(observed.priority, "Medium");
+    assert.equal(observed.type, "Bug");
+    assert.equal(observed.priority, "Urgent");
+    assert.equal(observed.points, "5");
+    assert.equal(observed.epic, "Boot screen");
+    assert.equal(observed.labels, "uiverification");
     await evaluate(
       client,
       "document.querySelector('.delivery-board').scrollLeft = document.querySelector('.delivery-board').scrollWidth",
@@ -471,7 +772,7 @@ async function driveGit() {
     const click = (text) =>
       evaluate(
         client,
-        `(() => {const b=[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith(${JSON.stringify(text)})); if(!b || b.disabled)throw Error('Missing enabled control');b.click()})()`,
+        `(() => {const b=[...document.querySelectorAll('button')].find(b=>b.textContent.trim().startsWith(${JSON.stringify(text)}) || b.getAttribute('aria-label') === ${JSON.stringify(text)}); if(!b || b.disabled)throw Error('Missing enabled control');b.click()})()`,
       );
     const fill = (id, value) =>
       evaluate(
@@ -501,6 +802,7 @@ async function driveGit() {
     await click("Add ticket");
     await fill("ticket-title", "Preserve unfinished work");
     await click("Create ticket");
+    await click("Expand To do");
     await wait("document.querySelector('.work-ticket__title') !== null");
     await evaluate(
       client,
@@ -527,6 +829,13 @@ async function driveGit() {
       client,
       "window.stave.workspace.getSnapshot().then(s=>s.tickets[0].workspace)",
     );
+    assert.equal(
+      await readFile(
+        `${second.path}/stave-verification-unfinished.txt`,
+        "utf8",
+      ),
+      "Unfinished work must survive refresh.\n",
+    );
     assert.equal(first.path, second.path);
     assert.equal(first.branch, second.branch);
     assert.equal(second.dirty, true);
@@ -548,13 +857,32 @@ async function verifyRestored() {
       client,
       "window.stave.workspace.getSnapshot()",
     );
+    await evaluate(
+      client,
+      `(() => document.querySelector('button[aria-label="Expand Done"]')?.click())()`,
+    );
+    for (let attempt = 0; attempt < 50; attempt++) {
+      if (
+        await evaluate(
+          client,
+          "document.querySelector('.board-column--done .work-ticket') !== null",
+        )
+      )
+        break;
+      await new Promise((resolve) => setTimeout(resolve, 100));
+    }
     const visible = await evaluate(
       client,
       "({tabs:[...document.querySelectorAll('.shell-tabs button')].map(e=>e.textContent.trim()),project:document.querySelector('.board-page__header h1')?.textContent,done:document.querySelectorAll('.board-column--done .work-ticket').length})",
     );
     assert.equal(snapshot.project.name, "Workflow proof");
-    assert.equal(snapshot.tickets.length, 1);
+    assert.equal(snapshot.tickets.length, 2);
+    assert.deepEqual(
+      snapshot.tickets.map((ticket) => ticket.key),
+      ["STV-1", "STV-2"],
+    );
     assert.equal(snapshot.tickets[0].stage, "done");
+    assert.equal(snapshot.tickets[1].title, "Real app thread");
     assert.deepEqual(
       snapshot.runs.map((r) => r.state),
       ["canceled", "succeeded", "succeeded", "succeeded"],
@@ -568,7 +896,7 @@ async function verifyRestored() {
       feature: "restart-persistence",
       revision: snapshot.revision,
       projectId: snapshot.project.id,
-      ticketId: snapshot.tickets[0].id,
+      ticketIds: snapshot.tickets.map((ticket) => ticket.id),
       runs: snapshot.runs.length,
       visible,
     };
@@ -583,6 +911,8 @@ if (command === "drive-git") await driveGit();
 else if (command === "verify-restored") await verifyRestored();
 else if (command === "drive-workflow") await driveWorkflow();
 else if (command === "drive-decision") await driveDecision();
+else if (command === "drive-avatar-study") await driveAvatarStudy();
+else if (command === "drive-boot-screen") await driveBootScreen();
 else if (command === "doctor") await doctor();
 else if (command === "drive-state-preview") await driveStatePreview();
 else {

@@ -5,7 +5,7 @@ description: Drive the real Stave Electron desktop app through Chrome DevTools P
 
 # Verify Stave
 
-Use this skill to prove behavior in the real Electron app. Run `pnpm check` first for static and unit coverage, then exercise the affected user path here.
+Use this skill to prove behavior in the real Electron app. Run `pnpm check` first, then exercise the affected user paths here. The [feature map](features/README.md) lists the current user-facing surfaces.
 
 ## Launch
 
@@ -17,66 +17,83 @@ VERIFY_STATE="/tmp/stave-verify-$VERIFY_PORT"
 .agents/skills/verify-stave/scripts/launch.sh "$VERIFY_PORT" "$VERIFY_STATE"
 ```
 
-The helper runs the documented Electron Forge development entry point with a dedicated Chromium profile and remote-debugging port. It is ready when the helper prints `Stave verification instance ready`. Keep that terminal or execution session open while driving the app. Logs and exact process IDs are stored under `$VERIFY_STATE`.
+The helper runs the Electron Forge development entry point with a dedicated Chromium profile and remote-debugging port. It is ready when it prints `Stave verification instance ready`. Keep that execution session open while driving the app. Logs and exact process IDs are stored under `$VERIFY_STATE`.
 
-Run only one driver against a given port. Parallel instances are safe when they use different ports and state directories.
-
-Teardown:
-
-```bash
-.agents/skills/verify-stave/scripts/cleanup.sh "$VERIFY_PORT" "$VERIFY_STATE"
-```
+The launch state directory contains the temporary profile, logs, and default `STAVE_DATA_DIR`. Set `STAVE_DATA_DIR` to a separate disposable directory when data must survive cleanup and relaunch. Run one driver at a time against a port. Parallel instances are safe when they use different ports and state directories.
 
 ## Doctor
 
-Before driving the app, confirm that the expected Stave renderer owns the chosen endpoint:
+Before the first drive on an instance, confirm the expected Stave renderer owns the chosen endpoint:
 
 ```bash
 node .agents/skills/verify-stave/scripts/verify.mjs doctor "$VERIFY_PORT"
 ```
 
-The doctor fails unless CDP exposes a page titled `Stave` with the product workspace or avatar lab. A failed doctor means the instance is not worth driving. Inspect `$VERIFY_STATE/launcher.log`, clean up that instance, and launch again.
+The doctor checks for a page titled `Stave` with the workspace or avatar lab. After a failed drive, run the doctor again. If it fails, inspect `$VERIFY_STATE/launcher.log`, clean that instance, and launch a new one.
+
+The boot-screen driver performs its own page health check because it must run immediately after a fresh launch to observe the conditional opening state.
 
 ## Drive
 
-Verify a fresh product workspace with:
+Capture proof beneath `artifacts/verification/stave/<run-id>/`:
+
+```bash
+VERIFY_RUN="$(date -u +%Y%m%dT%H%M%SZ)"
+VERIFY_EVIDENCE="artifacts/verification/stave/$VERIFY_RUN"
+```
+
+The main workspace flow creates a project and ticket through visible forms, sets ticket metadata, cancels a simulated run, completes the three role handoffs, inspects the ticket, and exercises team chat and a ticket thread:
 
 ```bash
 node .agents/skills/verify-stave/scripts/verify.mjs drive-workflow "$VERIFY_PORT" "$VERIFY_EVIDENCE"
 ```
 
-This creates a project and ticket through the visible forms, cancels a simulated run, restarts it, verifies all three role handoffs and completion, and captures the board. Use a fresh isolated profile.
-
-
-Drive the current state-preview feature through stable visible labels:
+To verify saved state after restart, use a data directory separate from the launch state directory. Run `drive-workflow`, clean up that app instance, launch a fresh profile with the same `STAVE_DATA_DIR`, run `doctor`, then run:
 
 ```bash
-VERIFY_RUN="$(date -u +%Y%m%dT%H%M%SZ)"
-VERIFY_EVIDENCE="artifacts/verification/stave/$VERIFY_RUN"
-node .agents/skills/verify-stave/scripts/verify.mjs drive-state-preview "$VERIFY_PORT" "$VERIFY_EVIDENCE"
+node .agents/skills/verify-stave/scripts/verify.mjs verify-restored "$VERIFY_PORT" "$VERIFY_EVIDENCE-restored"
 ```
 
-The driver connects to the real Electron renderer, captures the initial screen, clicks the visible `Blocked` control, verifies every agent card reports `Blocked`, and captures the resulting screen. It does not call React internals or test-only setters.
+For the Avatar Lab, open Settings → **Avatar lab** → **Open lab**. `drive-avatar-study` records crew identity fields and accessible avatar labels, then checks compact cards at 1280, 800, and 500 pixels. `drive-state-preview` changes all agents to Blocked, checks accessible labels, tests reduced motion, and restores Live mix:
 
-Use the same CDP recipe for other mapped features. Prefer accessible labels, visible button text, and semantic headings. Do not use screen coordinates or tab counts.
+```bash
+node .agents/skills/verify-stave/scripts/verify.mjs drive-avatar-study "$VERIFY_PORT" "$VERIFY_EVIDENCE-avatar-study"
+node .agents/skills/verify-stave/scripts/verify.mjs drive-state-preview "$VERIFY_PORT" "$VERIFY_EVIDENCE-avatar-state"
+```
 
-## Persistence and Git workspaces
+For a ticket worktree, use a disposable committed repository and a fresh app data directory. Never point the proof at a real user repository:
 
-Set `STAVE_DATA_DIR` to a separate disposable directory before launch to preserve it across verification-instance cleanup. After `drive-workflow`, stop the instance, relaunch with the same data directory, and run `verify-restored` to check the same identities and run history.
+```bash
+VERIFY_REPOSITORY=/path/to/disposable-repository \
+  node .agents/skills/verify-stave/scripts/verify.mjs drive-git "$VERIFY_PORT" "$VERIFY_EVIDENCE-git"
+```
 
-For Git proof, create a disposable committed repository and a fresh data directory. Set `VERIFY_REPOSITORY` and run `drive-git`. It selects the repository through the UI, prepares a ticket workspace, writes one verification file there, and refreshes to prove the path, branch and unfinished file are preserved. Do not point this proof at a real user repository.
+`drive-git` prepares a ticket worktree, writes an uncommitted proof file, refreshes it, and checks that the same branch, path, dirty state, and file contents remain.
+
+For a structured Codex decision, use a disposable committed repository with a `scenario` file containing `decision`. Launch the app with a temporary executable named `codex` first on `PATH`; make that shim execute the bundled `packages/agent-runtime/tests/fixtures/codex-server.mjs` with the same arguments. Set `VERIFY_REPOSITORY` to the fixture path, then run:
+
+```bash
+VERIFY_REPOSITORY=/path/to/disposable-repository \
+  node .agents/skills/verify-stave/scripts/verify.mjs drive-decision "$VERIFY_PORT" "$VERIFY_EVIDENCE-decision"
+```
+
+Do not run `drive-decision` without the fixture shim. Otherwise, the app can invoke the installed Codex CLI.
+
+For the delayed boot screen, start a fresh isolated app and run this driver immediately. It observes the initial workspace load under CPU throttling. It records `verified-unreachable` with `fast-open.png` if the workspace resolves before the 300 ms display delay:
+
+```bash
+node .agents/skills/verify-stave/scripts/verify.mjs drive-boot-screen "$VERIFY_PORT" "$VERIFY_EVIDENCE-boot-screen"
+```
+
+Use the same CDP recipe for other mapped features. Prefer accessible labels, visible button text, and semantic headings. Do not use screen coordinates, test-only React setters, or mocked IPC.
 
 ## Evidence
 
-Proof is written beneath `artifacts/verification/stave/<run-id>/`:
-
-- `before.png` captures the state before the action.
-- `after.png` captures the resulting user-visible state.
+- `before.png` and `after.png` capture the state before and after an action when used by a driver.
 - `result.json` records the action, observed labels, page URL, and assertion outcome.
+- Other images have names tied to the captured state, such as `crew.png`, `workspace.png`, or `restored.png`.
 
-A valid proof exercises the real user path and captures both the action boundary and resulting state. For features with durable side effects, also inspect the resulting file, database row, Git ref, or message. Do not substitute an internal setter or a mocked UI for the real Electron renderer. External systems may be faked only behind an existing production boundary.
-
-The current avatar preview has no durable side effect. Its proof is the visible state change plus the observed accessibility labels.
+For features with durable side effects, inspect the resulting file, database row, Git ref, or message before cleanup. Check every artifact at its named location after cleanup; do not assume it survived.
 
 ## Cleanup
 
@@ -86,15 +103,21 @@ Always clean up the exact instance you launched:
 .agents/skills/verify-stave/scripts/cleanup.sh "$VERIFY_PORT" "$VERIFY_STATE"
 ```
 
-The helper only terminates PIDs recorded by `launch.sh` and verifies the Electron PID still owns the selected port before signaling it. It removes the isolated profile and logs. It never removes `artifacts/verification`, so evidence survives teardown.
+The helper only terminates PIDs recorded by `launch.sh` and verifies that the Electron PID still owns the selected port before signaling it. It removes the isolated profile and logs. It does not remove `artifacts/verification` or a separately configured `STAVE_DATA_DIR`.
 
 Never kill Electron, Node, pnpm, or Forge by process name. Other development sessions may be active.
 
 ## Helpers
 
-- `scripts/launch.sh <port> <state-dir>` starts one isolated Electron verification instance, waits for CDP readiness, and remains attached until cleanup.
-- `scripts/verify.mjs doctor <port>` checks that the correct app and controls are available.
-- `scripts/verify.mjs drive-state-preview <port> <evidence-dir>` drives one mapped feature and captures proof.
+- `scripts/launch.sh <port> <state-dir>` starts one isolated Electron verification instance and remains attached until cleanup.
+- `scripts/verify.mjs doctor <port>` checks the app endpoint and surface.
+- `scripts/verify.mjs drive-avatar-study <port> <evidence-dir>` checks living crew and compact study cards.
+- `scripts/verify.mjs drive-state-preview <port> <evidence-dir>` checks shared avatar states and reduced motion.
+- `scripts/verify.mjs drive-workflow <port> <evidence-dir>` checks project, ticket, simulation, and team chat.
+- `scripts/verify.mjs drive-decision <port> <evidence-dir>` checks a structured Codex decision; requires the fake Codex shim and disposable repository.
+- `scripts/verify.mjs drive-git <port> <evidence-dir>` checks worktree preparation and refresh; requires a disposable repository.
+- `scripts/verify.mjs verify-restored <port> <evidence-dir>` checks project, tickets, and run history after restart.
+- `scripts/verify.mjs drive-boot-screen <port> <evidence-dir>` checks the conditional boot screen during a slow initial load.
 - `scripts/cleanup.sh <port> <state-dir>` terminates only the recorded instance and removes its scratch state.
 
 The shell helpers are executable. Run all commands from the repository root.
