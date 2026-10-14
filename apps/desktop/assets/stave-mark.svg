@@ -1,9 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
-  <title>Stave workflow mark</title>
-  <rect width="128" height="128" rx="27" fill="#221f18" />
-  <path d="M34 26v76M64 26v76M94 26v76" fill="none" stroke="#625e55" stroke-linecap="round" stroke-width="8" />
-  <path d="M31 67h66" fill="none" stroke="#8fb8e8" stroke-linecap="round" stroke-width="9" />
-  <circle cx="64" cy="67" r="12" fill="#8fb8e8" />
-  <circle cx="34" cy="67" r="5" fill="#edecec" />
-  <circle cx="94" cy="67" r="5" fill="#edecec" />
+  <title>Stave stacked S mark</title>
+  <rect x="42.7" y="24" width="64" height="18.7" rx="9.3" fill="#edecec" />
+  <rect x="21.3" y="54.7" width="85.4" height="18.6" rx="9.3" fill="#8fb8e8" />
+  <rect x="21.3" y="85.3" width="64" height="18.7" rx="9.3" fill="#edecec" />
 </svg>
