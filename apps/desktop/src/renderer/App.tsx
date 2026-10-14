@@ -25,6 +25,7 @@ import type {
   WorkspaceSnapshot,
 } from "../shared/workspace-snapshot";
 import { AvatarLab } from "./AvatarLab";
+import { BootScreen, useBootScreenPhase } from "./BootScreen";
 import { type ChatChannelId, ChatView } from "./ChatView";
 
 type WorkspaceState =
@@ -175,6 +176,7 @@ export function App() {
   const [workspace, dispatch] = useReducer(workspaceReducer, {
     status: "loading",
   });
+  const bootPhase = useBootScreenPhase(workspace.status === "loading");
   const [retry, setRetry] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const pendingRef = useRef(new Set<string>());
@@ -558,9 +560,19 @@ export function App() {
     );
   }
 
+  const bootLayerClass =
+    workspace.status === "loading" || bootPhase === "visible"
+      ? "boot-covered"
+      : bootPhase === "leaving"
+        ? "boot-revealing"
+        : "";
+
   return (
     <>
-      <header className="shell-titlebar">
+      <header
+        className={`shell-titlebar${bootLayerClass ? ` ${bootLayerClass}` : ""}`}
+        aria-hidden={bootLayerClass === "boot-covered"}
+      >
         <div className="shell-titlebar__identity">
           <img className="shell-brand__mark" src={staveMarkUrl} alt="" />
           <span className="shell-brand__name">stave</span>
@@ -618,7 +630,8 @@ export function App() {
         <AvatarLab />
       ) : (
         <main
-          className={`shell-content${selectedTicket && view === "board" ? " shell-content--inspector-open" : ""}`}
+          className={`shell-content${selectedTicket && view === "board" ? " shell-content--inspector-open" : ""}${bootLayerClass ? ` ${bootLayerClass}` : ""}`}
+          aria-hidden={bootLayerClass === "boot-covered"}
         >
           {error && !selectedTicket && (
             <div className="notice notice--error" role="alert">
@@ -1670,6 +1683,7 @@ export function App() {
           </ol>
         </section>
       )}
+      <BootScreen phase={bootPhase} />
     </>
   );
 }
