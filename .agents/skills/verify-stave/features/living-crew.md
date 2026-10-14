@@ -12,11 +12,11 @@ The living crew grid presents distinct procedural identities and communicates ea
 
 ## How to get to it (user POV)
 
-Launch Stave and remain on the opening avatar study. Scroll below the state picker to the grid headed by the `Living crew` eyebrow.
+In the Board view, open Settings, choose **Avatar lab**, then **Open lab**. Scroll below the state picker to the agent grid under the `Living crew` eyebrow.
 
 ## Driving it with CDP
 
-Query `.agent-study` elements from the real renderer. For each card, record its heading, role, state label, activity, and the `.agent-avatar` accessibility label. Prove that every card has all five values and that agent names are distinct.
+Run `verify.mjs drive-avatar-study`. It records each `.agent-study` heading, role, state, activity, and `.agent-avatar` accessibility label, and asserts that all ten names are distinct and all fields are present.
 
 Capture a full-page screenshot and the extracted identity table in the evidence directory.
 
