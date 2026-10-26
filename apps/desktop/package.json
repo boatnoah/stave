@@ -21,8 +21,8 @@
     "@stave/db": "workspace:*",
     "@stave/domain": "workspace:*",
     "@stave/git-workspace": "workspace:*",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "update-electron-app": "3.3.0"
   },
   "devDependencies": {
